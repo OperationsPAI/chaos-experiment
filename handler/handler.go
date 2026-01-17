@@ -715,6 +715,94 @@ func GetSystemResourceMap(ctx context.Context) (map[SystemType]SystemResource, e
 	return resourceMap, nil
 }
 
+// GetSystemResource retrieves system resources for a single system
+func GetSystemResource(ctx context.Context, system SystemType) (SystemResource, error) {
+	internalSystem := systemconfig.SystemType(system)
+	systemCache := resourcelookup.GetSystemCache(internalSystem)
+	namespace, err := systemconfig.GetNamespaceByIndex(internalSystem, defaultStartIndex)
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get namespace prefix for system %s: %v", system, err)
+	}
+
+	appLabels, err := systemCache.GetAllAppLabels(ctx, namespace, defaultAppLabel)
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get app labels namespace %s for system %s: %v", namespace, system, err)
+	}
+
+	methods, err := systemCache.GetAllJVMMethods()
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get JVM methods: %v", err)
+	}
+
+	jvmAppNames := make([]string, 0, len(methods))
+	for _, method := range methods {
+		jvmAppNames = append(jvmAppNames, method.AppName)
+	}
+
+	endpoints, err := systemCache.GetAllHTTPEndpoints()
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get HTTP endpoints: %v", err)
+	}
+
+	httpAppNames := make([]string, 0, len(endpoints))
+	for _, endpoint := range endpoints {
+		httpAppNames = append(httpAppNames, endpoint.AppName)
+	}
+
+	pairs, err := systemCache.GetAllNetworkPairs()
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get network pairs: %v", err)
+	}
+
+	networkPairs := make([]Pair, 0, len(pairs))
+	for _, pair := range pairs {
+		networkPairs = append(networkPairs, Pair{
+			Source: pair.SourceService,
+			Target: pair.TargetService,
+		})
+	}
+
+	dnsEndpoints, err := systemCache.GetAllDNSEndpoints()
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get DNS endpoints: %v", err)
+	}
+
+	dnsAppNames := make([]string, 0, len(dnsEndpoints))
+	for _, endpoint := range dnsEndpoints {
+		dnsAppNames = append(dnsAppNames, endpoint.AppName)
+	}
+
+	operations, err := systemCache.GetAllDatabaseOperations()
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get database operations: %v", err)
+	}
+
+	databaseAppNames := make([]string, 0, len(operations))
+	for _, operation := range operations {
+		databaseAppNames = append(databaseAppNames, operation.AppName)
+	}
+
+	containers, err := systemCache.GetAllContainers(ctx, namespace)
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get containers of namespace %s for system %s: %v", namespace, system, err)
+	}
+
+	containerNames := make([]string, 0, len(containers))
+	for _, container := range containers {
+		containerNames = append(containerNames, container.AppLabel)
+	}
+
+	return SystemResource{
+		AppLabels:        appLabels,
+		JVMAppNames:      jvmAppNames,
+		HTTPAppNames:     httpAppNames,
+		NetworkPairs:     networkPairs,
+		DNSAppNames:      dnsAppNames,
+		DatabaseAppNames: databaseAppNames,
+		ContainerNames:   containerNames,
+	}, nil
+}
+
 type ChaosResourceMapping struct {
 	IndexFieldName string `json:"index_field_name"`
 	ResourceType   string `json:"resource_type"`
