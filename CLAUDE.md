@@ -37,6 +37,30 @@ go build -o bin/faultpoints cmd/faultpoints/main.go
 go build -o bin/internaldata cmd/internaldata/main.go
 ```
 
+## Code Quality
+
+We use pre-commit hooks to maintain code quality. The configuration includes:
+- **golangci-lint**: Comprehensive Go linting with security and style checks
+- **gofmt/goimports**: Automatic code formatting and import organization
+- **govet**: Static analysis for common Go mistakes
+- **Standard hooks**: Trailing whitespace, EOF fixes, file validation
+
+To set up pre-commit:
+```bash
+# Install pre-commit
+pip install pre-commit
+
+# Install git hooks
+pre-commit install
+
+# Run on all files
+pre-commit run --all-files
+
+# Run specific checks
+pre-commit run --all-files --show-diff-on-failure --color=always go-fmt
+pre-commit run --all-files --show-diff-on-failure --color=always golangci-lint
+```
+
 ## Testing
 
 ```bash
