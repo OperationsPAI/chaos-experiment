@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/LGU-SE-Internal/chaos-experiment/chaos"
-	"github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"

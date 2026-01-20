@@ -92,6 +92,7 @@ const (
 	JVMMemoryStress
 	JVMMySQLLatency
 	JVMMySQLException
+	JVMRuntimeMutator
 )
 
 // Define ChaosType to name mapping
@@ -127,6 +128,7 @@ var ChaosTypeMap = map[ChaosType]string{
 	JVMMemoryStress:          "JVMMemoryStress",
 	JVMMySQLLatency:          "JVMMySQLLatency",
 	JVMMySQLException:        "JVMMySQLException",
+	JVMRuntimeMutator:        "JVMRuntimeMutator",
 }
 
 var ChaosNameMap = map[string]ChaosType{
@@ -161,6 +163,7 @@ var ChaosNameMap = map[string]ChaosType{
 	"JVMMemoryStress":          JVMMemoryStress,
 	"JVMMySQLLatency":          JVMMySQLLatency,
 	"JVMMySQLException":        JVMMySQLException,
+	"JVMRuntimeMutator":        JVMRuntimeMutator,
 }
 
 // GetChaosTypeName returns the name of the given ChaosType
@@ -246,6 +249,7 @@ var SpecMap = map[ChaosType]any{
 	JVMMemoryStress:          JVMMemoryStressSpec{},
 	JVMMySQLLatency:          JVMMySQLLatencySpec{},
 	JVMMySQLException:        JVMMySQLExceptionSpec{},
+	JVMRuntimeMutator:        JVMRuntimeMutatorSpec{},
 }
 
 var ChaosHandlers = map[ChaosType]Injection{
@@ -280,6 +284,7 @@ var ChaosHandlers = map[ChaosType]Injection{
 	JVMMemoryStress:          &JVMMemoryStressSpec{},
 	JVMMySQLLatency:          &JVMMySQLLatencySpec{},
 	JVMMySQLException:        &JVMMySQLExceptionSpec{},
+	JVMRuntimeMutator:        &JVMRuntimeMutatorSpec{},
 }
 
 type InjectionConf struct {
@@ -314,6 +319,7 @@ type InjectionConf struct {
 	JVMMemoryStress          *JVMMemoryStressSpec          `range:"0-3"`
 	JVMMySQLLatency          *JVMMySQLLatencySpec          `range:"0-3"`
 	JVMMySQLException        *JVMMySQLExceptionSpec        `range:"0-2"`
+	JVMRuntimeMutator        *JVMRuntimeMutatorSpec        `range:"0-3"`
 }
 
 func (ic *InjectionConf) GetDisplayConfig(ctx context.Context) (map[string]any, error) {
