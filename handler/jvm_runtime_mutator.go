@@ -14,13 +14,13 @@ import (
 
 // JVMRuntimeMutatorSpec defines the JVM runtime mutator chaos injection parameters
 type JVMRuntimeMutatorSpec struct {
-	Duration       int    `range:"1-60" description:"Time Unit Minute"`
-	System         int    `range:"0-0" dynamic:"true" description:"System Index"`
-	MethodIdx      int    `range:"0-0" dynamic:"true" description:"Flattened app+method index"`
-	MutationType   string `range:"constant,operator,string" description:"Mutation Type"`
-	MutationOpt    int    `range:"0-10" description:"Mutation strategy option"`
-	MutationFrom   string `description:"Mutation from value (for constant mutations)"`
-	MutationTo     string `description:"Mutation to value (for constant mutations)"`
+	Duration         int    `range:"1-60" description:"Time Unit Minute"`
+	System           int    `range:"0-0" dynamic:"true" description:"System Index"`
+	MethodIdx        int    `range:"0-0" dynamic:"true" description:"Flattened app+method index"`
+	MutationType     string `range:"constant,operator,string" description:"Mutation Type"`
+	MutationOpt      int    `range:"0-10" description:"Mutation strategy option"`
+	MutationFrom     string `description:"Mutation from value (for constant mutations)"`
+	MutationTo       string `description:"Mutation to value (for constant mutations)"`
 	MutationStrategy string `description:"Mutation strategy (for operator/string mutations)"`
 }
 

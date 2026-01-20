@@ -17,7 +17,7 @@ repos:
         args: [--config=.golangci.yml]
 
   - repo: https://github.com/dnephin/pre-commit-golang
-    rev: v1.0.0
+    rev: v0.5.1
     hooks:
       - id: go-fmt
       - id: go-vet
