@@ -22,7 +22,7 @@ func CreateStressChaos(cli client.Client, namespace string, appName string, stre
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := stressChaos.ValidateCreate()
+	create, err := stressChaos.ValidateCreate(context.Background(), stressChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -51,7 +51,7 @@ func CreateStressChaosWithContainer(cli client.Client, ctx context.Context, name
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := stressChaos.ValidateCreate()
+	create, err := stressChaos.ValidateCreate(ctx, stressChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -157,7 +157,7 @@ func ScheduleStressChaos(cli client.Client, namespace string, appList []string, 
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(context.Background(), workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}

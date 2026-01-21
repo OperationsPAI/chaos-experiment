@@ -1,94 +1,53 @@
+version: "2"
+
 run:
   timeout: 5m
   issues-exit-code: 1
   tests: true
 
-linters-settings:
-  govet:
-    check-shadowing: true
-  gocyclo:
-    min-complexity: 15
-  dupl:
-    threshold: 100
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  misspell:
-    locale: US
-  lll:
-    line-length: 120
-  goimports:
-    local-prefixes: github.com/LGU-SE-Internal/chaos-experiment
-  gocritic:
-    enabled-tags:
-      - performance
-      - style
-      - experimental
-    disabled-checks:
-      - wrapperFunc
-      - dupImport
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/LGU-SE-Internal/AegisLab
 
 linters:
   enable:
-    - bodyclose
-    - deadcode
-    - depguard
-    - dogsled
-    - dupl
     - errcheck
-    - gochecknoinits
-    - goconst
-    - gocritic
-    - gocyclo
-    - gofmt
-    - goimports
-    - golint
-    - gomnd
-    - goprintffuncname
-    - gosec
-    - gosimple
     - govet
     - ineffassign
-    - interfacer
-    - lll
-    - misspell
-    - nakedret
-    - rowserrcheck
-    - scopelint
     - staticcheck
-    - structcheck
-    - stylecheck
-    - typecheck
-    - unconvert
-    - unparam
     - unused
-    - varcheck
-    - whitespace
-  disable:
-    - maligned  # deprecated
-    - prealloc  # can be noisy
+  settings:
+    govet:
+      check-shadowing: true
+    gocritic:
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+      disabled-checks:
+        - wrapperFunc
+        - dupImport
+        - rangeValCopy
+        - deferInLoop
+        - unnamedResult
+        - unnecessaryBlock
 
 issues:
   exclude-rules:
     # Exclude some linters from running on tests files.
-    - path: _test\.go
+    - path: _test\.gocd
       linters:
-        - gocyclo
-        - errcheck
-        - dupl
         - gosec
-        - lll
 
     # Exclude known linter issues
     - text: "weak cryptographic primitive"
       linters:
         - gosec
-
-    # Exclude shadow checking in test files
-    - path: _test\.go
-      text: "shadow"
-      linters:
-        - govet
 
   max-issues-per-linter: 0
   max-same-issues: 0

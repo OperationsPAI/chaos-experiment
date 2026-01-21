@@ -58,7 +58,7 @@ appList := []string{"checkoutservice", "recommendationservice", "emailservice", 
     ```go
     appName := "ts-user-service"
     // Get a dynamic method by index
-    controllers.CreateJVMChaos(k8sClient, namespace, appName, 
+    controllers.CreateJVMChaos(k8sClient, namespace, appName,
         chaosmeshv1alpha1.JVMLatencyAction, pointer.String("2m"),
         chaos.WithJVMClass("com.example.UserService"),
         chaos.WithJVMMethod("getUserById"),
@@ -68,7 +68,7 @@ appList := []string{"checkoutservice", "recommendationservice", "emailservice", 
 - JVM Exception Injection
     ```go
     appName := "ts-order-service"
-    controllers.CreateJVMChaos(k8sClient, namespace, appName, 
+    controllers.CreateJVMChaos(k8sClient, namespace, appName,
         chaosmeshv1alpha1.JVMExceptionAction, pointer.String("2m"),
         chaos.WithJVMClass("com.example.OrderService"),
         chaos.WithJVMMethod("createOrder"),
@@ -78,7 +78,7 @@ appList := []string{"checkoutservice", "recommendationservice", "emailservice", 
 - JVM MySQL Latency
     ```go
     appName := "ts-order-service"
-    controllers.CreateJVMChaos(k8sClient, namespace, appName, 
+    controllers.CreateJVMChaos(k8sClient, namespace, appName,
         chaosmeshv1alpha1.JVMMySQLAction, pointer.String("2m"),
         chaos.WithJVMMySQLConnector("5"),
         chaos.WithJVMMySQLDatabase("ts"),

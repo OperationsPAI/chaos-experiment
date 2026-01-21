@@ -64,26 +64,26 @@ func (s *JVMRuntimeMutatorSpec) Create(cli cli.Client, opts ...Option) (string, 
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 
-	var optss []chaos.OptJVMChaos
+	var optss []chaos.OptChaos
 
 	// Configure mutation based on type
 	switch s.MutationType {
 	case "constant":
 		optss = append(optss,
-			chaos.WithJVMRuntimeMutatorType("constant"),
-			chaos.WithJVMMutationConfig(s.MutationFrom, s.MutationTo),
+			chaos.WithRuntimeMutatorAction("constant"),
+			chaos.WithRuntimeMutatorConfig(s.MutationFrom, s.MutationTo),
 		)
 	case "operator":
 		strategy := s.getMutationStrategy()
 		optss = append(optss,
-			chaos.WithJVMRuntimeMutatorType("operator"),
-			chaos.WithJVMMutationStrategy(strategy),
+			chaos.WithRuntimeMutatorAction("operator"),
+			chaos.WithRuntimeMutatorStrategy(strategy),
 		)
 	case "string":
 		strategy := s.getMutationStrategy()
 		optss = append(optss,
-			chaos.WithJVMRuntimeMutatorType("string"),
-			chaos.WithJVMMutationStrategy(strategy),
+			chaos.WithRuntimeMutatorAction("string"),
+			chaos.WithRuntimeMutatorStrategy(strategy),
 		)
 	default:
 		return "", fmt.Errorf("unsupported mutation type: %s", s.MutationType)

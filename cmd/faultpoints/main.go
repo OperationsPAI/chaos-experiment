@@ -98,7 +98,10 @@ func printUsage() {
 // initResourceLookupForSystem initializes the resource lookup with system-specific data
 func initResourceLookupForSystem() {
 	// Force clearing of any cached data to ensure fresh lookups
-	resourcelookup.InvalidateCache()
+	cache := resourcelookup.GetSystemCache(systemconfig.GetCurrentSystem())
+	if cache != nil {
+		cache.InvalidateCache()
+	}
 }
 
 func listHTTPEndpoints() {
@@ -300,7 +303,11 @@ func getHTTPEndpointsForCurrentSystem() ([]resourcelookup.AppEndpointPair, error
 	case systemconfig.SystemOnlineBoutique:
 		services = obendpoints.GetAllServices()
 	default:
-		return resourcelookup.GetAllHTTPEndpoints()
+		cache := resourcelookup.GetSystemCache(systemconfig.GetCurrentSystem())
+		if cache != nil {
+			return cache.GetAllHTTPEndpoints()
+		}
+		return nil, fmt.Errorf("no HTTP endpoints available for system: %s", systemconfig.GetCurrentSystem())
 	}
 
 	result := make([]resourcelookup.AppEndpointPair, 0)
@@ -422,7 +429,11 @@ func getNetworkPairsForCurrentSystem() ([]resourcelookup.AppNetworkPair, error) 
 	case systemconfig.SystemOnlineBoutique:
 		services = obendpoints.GetAllServices()
 	default:
-		return resourcelookup.GetAllNetworkPairs()
+		cache := resourcelookup.GetSystemCache(systemconfig.GetCurrentSystem())
+		if cache != nil {
+			return cache.GetAllNetworkPairs()
+		}
+		return nil, fmt.Errorf("no network pairs available for system: %s", systemconfig.GetCurrentSystem())
 	}
 
 	// Build unique source->target pairs
@@ -441,8 +452,6 @@ func getNetworkPairsForCurrentSystem() ([]resourcelookup.AppNetworkPair, error) 
 			endpoints = hsendpoints.GetEndpointsByService(serviceName)
 		case systemconfig.SystemSocialNetwork:
 			endpoints = snendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemOnlineBoutique:
-			endpoints = obendpoints.GetEndpointsByService(serviceName)
 		case systemconfig.SystemOnlineBoutique:
 			endpoints = obendpoints.GetEndpointsByService(serviceName)
 		}
@@ -574,7 +583,11 @@ func getDNSEndpointsForCurrentSystem() ([]resourcelookup.AppDNSPair, error) {
 	case systemconfig.SystemOnlineBoutique:
 		services = obendpoints.GetAllServices()
 	default:
-		return resourcelookup.GetAllDNSEndpoints()
+		cache := resourcelookup.GetSystemCache(systemconfig.GetCurrentSystem())
+		if cache != nil {
+			return cache.GetAllDNSEndpoints()
+		}
+		return nil, fmt.Errorf("no DNS endpoints available for system: %s", systemconfig.GetCurrentSystem())
 	}
 
 	// Build gRPC-only pairs set using grpcoperations data
@@ -816,7 +829,11 @@ func getDatabaseOperationsForCurrentSystem() ([]resourcelookup.AppDatabasePair, 
 	case systemconfig.SystemSocialNetwork:
 		services = sndb.GetAllDatabaseServices()
 	default:
-		return resourcelookup.GetAllDatabaseOperations()
+		cache := resourcelookup.GetSystemCache(systemconfig.GetCurrentSystem())
+		if cache != nil {
+			return cache.GetAllDatabaseOperations()
+		}
+		return nil, fmt.Errorf("no database operations available for system: %s", systemconfig.GetCurrentSystem())
 	}
 
 	result := make([]resourcelookup.AppDatabasePair, 0)

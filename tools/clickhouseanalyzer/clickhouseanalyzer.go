@@ -122,7 +122,7 @@ type GRPCOperation struct {
 
 // Create materialized view SQL statement
 const createMaterializedViewSQL = `
-CREATE MATERIALIZED VIEW IF NOT EXISTS otel_traces_mv 
+CREATE MATERIALIZED VIEW IF NOT EXISTS otel_traces_mv
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
 PRIMARY KEY (masked_route, ServiceName, db_sql_table)
@@ -140,10 +140,10 @@ ORDER BY (
 )
 SETTINGS allow_nullable_key = 1
 POPULATE
-AS 
-WITH 
+AS
+WITH
     replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+(/.*)', '\\1') AS path
-SELECT 
+SELECT
     ResourceAttributes['service.name'] AS ServiceName,
     4294967295 - toUnixTimestamp(Timestamp) AS version,
     Timestamp,
@@ -156,29 +156,29 @@ SELECT
     SpanAttributes['url.full'] AS url_full,
     SpanAttributes['http.status_code'] AS http_status_code,
     SpanAttributes['http.target'] AS http_target,
-    
-    CASE 
-        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != ''
             THEN SpanAttributes['http.request.method']
-        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != '' 
+        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != ''
             THEN SpanAttributes['http.method']
         ELSE ''
     END AS request_method,
-    
-    CASE 
-        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != ''
             THEN SpanAttributes['http.response.status_code']
-        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != '' 
+        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != ''
             THEN SpanAttributes['http.status_code']
         ELSE ''
     END AS response_status_code,
-    
+
     CASE
         WHEN SpanAttributes['http.route'] IS NOT NULL AND SpanAttributes['http.route'] != ''
             THEN replaceRegexpAll(SpanAttributes['http.route'], '/\\{[^}]+\\}', '/*')
-            
+
         WHEN SpanAttributes['http.target'] IS NOT NULL AND SpanAttributes['http.target'] != ''
-            THEN 
+            THEN
                 CASE
                     WHEN position(SpanAttributes['http.target'], '/api/v1/verifycode/verify/') = 1
                         THEN '/api/v1/verifycode/verify/*'
@@ -204,9 +204,9 @@ SELECT
                         THEN replaceRegexpAll(SpanAttributes['http.target'], '/([^/]+/[^/]+/[^/]+/)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})', '/\\1*')
                     ELSE SpanAttributes['http.target']
                 END
-                
+
         WHEN SpanAttributes['url.full'] IS NOT NULL AND SpanAttributes['url.full'] != ''
-            THEN 
+            THEN
                 CASE
                     WHEN match(SpanAttributes['url.full'], 'https?://[^/]+(/.*)') THEN
                         CASE
@@ -222,7 +222,7 @@ SELECT
                                 THEN replaceRegexpAll(path, '(/api/v1/securityservice/securityConfigs/)[^/]+', '\\1*')
                             WHEN position(path, '/api/v1/travel2service/routes/') = 1
                                 THEN replaceRegexpAll(path, '(/api/v1/travel2service/routes/)[^/]+', '\\1*')
-                            WHEN position(path, '/api/v1/routeservice/routes/') = 1 
+                            WHEN position(path, '/api/v1/routeservice/routes/') = 1
                                  AND match(path, '/api/v1/routeservice/routes/[^/]+/[^/]+')
                                 THEN replaceRegexpAll(path, '(/api/v1/routeservice/routes/)[^/]+/[^/]+', '\\1*/*')
                             WHEN position(path, '/api/v1/orderservice/order/status/') = 1
@@ -245,7 +245,7 @@ SELECT
                                 THEN replaceRegexpAll(path, '(/api/v1/orderOtherService/orderOther/security/)[^/]+/[^/]+', '\\1*/*')
                             WHEN position(path, '/api/v1/orderOtherService/orderOther/') = 1
                                 THEN replaceRegexpAll(path, '(/api/v1/orderOtherService/orderOther/)[^/]+$', '\\1*')
-                            WHEN position(path, '/api/v1/routeservice/routes/') = 1 
+                            WHEN position(path, '/api/v1/routeservice/routes/') = 1
                                  AND NOT match(path, '/api/v1/routeservice/routes/[^/]+/[^/]+')
                                 THEN replaceRegexpAll(path, '(/api/v1/routeservice/routes/)[^/]+$', '\\1*')
                             WHEN position(path, '/api/v1/priceservice/prices/') = 1
@@ -260,19 +260,19 @@ SELECT
                 END
         ELSE ''
     END AS masked_route,
-    
+
     SpanAttributes['server.address'] AS server_address,
     SpanAttributes['server.port'] AS server_port,
     SpanAttributes['db.connection_string'] AS db_connection_string,
     SpanAttributes['db.name'] AS db_name,
     SpanAttributes['db.operation'] AS db_operation,
-    SpanAttributes['db.sql.table'] AS db_sql_table, 
+    SpanAttributes['db.sql.table'] AS db_sql_table,
     SpanAttributes['db.statement'] AS db_statement,
     SpanAttributes['db.system'] AS db_system,
     SpanAttributes['db.user'] AS db_user,
     SpanName AS span_name
 FROM otel_traces
-WHERE 
+WHERE
     ResourceAttributes['service.namespace'] = 'ts0'
     AND SpanKind IN ('Server', 'Client')
     AND mapExists(
@@ -283,7 +283,7 @@ WHERE
 
 // Create materialized view SQL statement for OpenTelemetry Demo
 const createOtelDemoMaterializedViewSQL = `
-CREATE MATERIALIZED VIEW IF NOT EXISTS otel_demo_traces_mv 
+CREATE MATERIALIZED VIEW IF NOT EXISTS otel_demo_traces_mv
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
 PRIMARY KEY (masked_route, ServiceName, db_name)
@@ -305,17 +305,17 @@ ORDER BY (
 )
 SETTINGS allow_nullable_key = 1
 POPULATE
-AS 
-WITH 
+AS
+WITH
     -- Extract path from url.full (without query string)
     replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+(/[^?]*)?.*', '\\1') AS url_path,
-    -- Extract query string from url.full  
+    -- Extract query string from url.full
     replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+[^?]*(\\?.*)?$', '\\1') AS url_query,
     -- Extract path from http.target (without query string)
     replaceRegexpOne(SpanAttributes['http.target'], '^([^?]*)(\\?.*)?$', '\\1') AS target_path,
     -- Extract query string from http.target
     replaceRegexpOne(SpanAttributes['http.target'], '^[^?]*(\\?.*)?$', '\\1') AS target_query
-SELECT 
+SELECT
     ResourceAttributes['service.name'] AS ServiceName,
     4294967295 - toUnixTimestamp(Timestamp) AS version,
     Timestamp,
@@ -328,37 +328,37 @@ SELECT
     SpanAttributes['url.full'] AS url_full,
     SpanAttributes['http.status_code'] AS http_status_code,
     SpanAttributes['http.target'] AS http_target,
-    
-    CASE 
-        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != ''
             THEN SpanAttributes['http.request.method']
-        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != '' 
+        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != ''
             THEN SpanAttributes['http.method']
         ELSE ''
     END AS request_method,
-    
-    CASE 
-        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != ''
             THEN SpanAttributes['http.response.status_code']
-        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != '' 
+        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != ''
             THEN SpanAttributes['http.status_code']
         ELSE ''
     END AS response_status_code,
-    
+
     CASE
         -- Priority 1: http.route (usually already parameterized like /api/products/{productId})
         WHEN SpanAttributes['http.route'] IS NOT NULL AND SpanAttributes['http.route'] != ''
-            THEN 
+            THEN
                 -- Replace {param} style with * and product IDs like /XXXXXX with /*
                 replaceRegexpAll(
                     replaceRegexpAll(SpanAttributes['http.route'], '\\{[^}]+\\}', '*'),
                     '/[A-Z0-9]{10}',
                     '/*'
                 )
-        
+
         -- Priority 2: url.full - need to extract path and mask parameters
         WHEN SpanAttributes['url.full'] IS NOT NULL AND SpanAttributes['url.full'] != ''
-            THEN 
+            THEN
                 CASE
                     -- /api/products/{productId} - product IDs are 10 char alphanumeric
                     WHEN match(url_path, '^/api/products/[A-Z0-9]+$')
@@ -376,16 +376,16 @@ SELECT
                     WHEN match(url_path, '^/ofrep/v1/evaluate/flags/[^/]+$')
                         THEN '/ofrep/v1/evaluate/flags/*'
                     -- Default: just use the path without query params
-                    ELSE 
-                        CASE 
-                            WHEN url_path != '' THEN url_path 
-                            ELSE '/' 
+                    ELSE
+                        CASE
+                            WHEN url_path != '' THEN url_path
+                            ELSE '/'
                         END
                 END
-        
+
         -- Priority 3: http.target - also need to mask parameters
         WHEN SpanAttributes['http.target'] IS NOT NULL AND SpanAttributes['http.target'] != ''
-            THEN 
+            THEN
                 CASE
                     -- /api/products/{productId}
                     WHEN match(target_path, '^/api/products/[A-Z0-9]+$')
@@ -403,22 +403,22 @@ SELECT
                     WHEN match(target_path, '^/ofrep/v1/evaluate/flags/[^/]+$')
                         THEN '/ofrep/v1/evaluate/flags/*'
                     -- Default: use target_path without query
-                    ELSE 
-                        CASE 
-                            WHEN target_path != '' THEN target_path 
+                    ELSE
+                        CASE
+                            WHEN target_path != '' THEN target_path
                             ELSE SpanAttributes['http.target']
                         END
                 END
-        
+
         ELSE ''
     END AS masked_route,
-    
+
     SpanAttributes['server.address'] AS server_address,
     SpanAttributes['server.port'] AS server_port,
     SpanAttributes['db.connection_string'] AS db_connection_string,
     SpanAttributes['db.name'] AS db_name,
     SpanAttributes['db.operation'] AS db_operation,
-    SpanAttributes['db.sql.table'] AS db_sql_table, 
+    SpanAttributes['db.sql.table'] AS db_sql_table,
     SpanAttributes['db.statement'] AS db_statement,
     SpanAttributes['db.system'] AS db_system,
     SpanAttributes['db.user'] AS db_user,
@@ -428,7 +428,7 @@ SELECT
     SpanAttributes['rpc.grpc.status_code'] AS grpc_status_code,
     SpanName AS span_name
 FROM otel_traces
-WHERE 
+WHERE
     ResourceAttributes['service.namespace'] = 'otel-demo'
     AND SpanKind IN ('Server', 'Client')
     AND mapExists(
@@ -441,7 +441,7 @@ WHERE
 // These systems use ResourceAttributes['k8s.namespace.name'] for filtering
 func createDeathStarBenchMaterializedViewSQL(namespace string, viewName string) string {
 	return fmt.Sprintf(`
-CREATE MATERIALIZED VIEW IF NOT EXISTS %s 
+CREATE MATERIALIZED VIEW IF NOT EXISTS %s
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
 PRIMARY KEY (masked_route, ServiceName, db_name)
@@ -463,8 +463,8 @@ ORDER BY (
 )
 SETTINGS allow_nullable_key = 1
 POPULATE
-AS 
-SELECT 
+AS
+SELECT
     ResourceAttributes['service.name'] AS ServiceName,
     4294967295 - toUnixTimestamp(Timestamp) AS version,
     Timestamp,
@@ -477,23 +477,23 @@ SELECT
     SpanAttributes['url.full'] AS url_full,
     SpanAttributes['http.status_code'] AS http_status_code,
     SpanAttributes['http.target'] AS http_target,
-    
-    CASE 
-        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != ''
             THEN SpanAttributes['http.request.method']
-        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != '' 
+        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != ''
             THEN SpanAttributes['http.method']
         ELSE ''
     END AS request_method,
-    
-    CASE 
-        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != ''
             THEN SpanAttributes['http.response.status_code']
-        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != '' 
+        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != ''
             THEN SpanAttributes['http.status_code']
         ELSE ''
     END AS response_status_code,
-    
+
     -- Path normalization for DeathStarBench systems - replace IDs with wildcards
     -- Matches: UUIDs (8-4-4-4-12 hex format) and numeric IDs (sequences of digits)
     CASE
@@ -505,13 +505,13 @@ SELECT
             THEN replaceRegexpAll(replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+(/.*)', '\\1'), '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|/\\d+', '/*')
         ELSE ''
     END AS masked_route,
-    
+
     SpanAttributes['server.address'] AS server_address,
     SpanAttributes['server.port'] AS server_port,
     SpanAttributes['db.connection_string'] AS db_connection_string,
     SpanAttributes['db.name'] AS db_name,
     SpanAttributes['db.operation'] AS db_operation,
-    SpanAttributes['db.sql.table'] AS db_sql_table, 
+    SpanAttributes['db.sql.table'] AS db_sql_table,
     SpanAttributes['db.statement'] AS db_statement,
     SpanAttributes['db.system'] AS db_system,
     SpanAttributes['db.user'] AS db_user,
@@ -521,7 +521,7 @@ SELECT
     SpanAttributes['rpc.grpc.status_code'] AS grpc_status_code,
     SpanName AS span_name
 FROM otel_traces
-WHERE 
+WHERE
     ResourceAttributes['k8s.namespace.name'] = '%s'
     AND SpanKind IN ('Server', 'Client')
     AND mapExists(
@@ -535,7 +535,7 @@ WHERE
 // Filters out OpenTelemetry collector internal spans
 func createOnlineBoutiqueMaterializedViewSQL(namespace string, viewName string) string {
 	return fmt.Sprintf(`
-CREATE MATERIALIZED VIEW IF NOT EXISTS %s 
+CREATE MATERIALIZED VIEW IF NOT EXISTS %s
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
 PRIMARY KEY (masked_route, ServiceName, db_name)
@@ -557,8 +557,8 @@ ORDER BY (
 )
 SETTINGS allow_nullable_key = 1
 POPULATE
-AS 
-SELECT 
+AS
+SELECT
     ResourceAttributes['service.name'] AS ServiceName,
     4294967295 - toUnixTimestamp(Timestamp) AS version,
     Timestamp,
@@ -571,23 +571,23 @@ SELECT
     SpanAttributes['url.full'] AS url_full,
     SpanAttributes['http.status_code'] AS http_status_code,
     SpanAttributes['http.target'] AS http_target,
-    
-    CASE 
-        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != ''
             THEN SpanAttributes['http.request.method']
-        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != '' 
+        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != ''
             THEN SpanAttributes['http.method']
         ELSE ''
     END AS request_method,
-    
-    CASE 
-        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != ''
             THEN SpanAttributes['http.response.status_code']
-        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != '' 
+        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != ''
             THEN SpanAttributes['http.status_code']
         ELSE ''
     END AS response_status_code,
-    
+
     -- Path normalization for DeathStarBench systems - replace IDs with wildcards
     -- Matches: UUIDs (8-4-4-4-12 hex format) and numeric IDs (sequences of digits)
     CASE
@@ -599,13 +599,13 @@ SELECT
             THEN replaceRegexpAll(replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+(/.*)', '\\1'), '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|/\\d+', '/*')
         ELSE ''
     END AS masked_route,
-    
+
     SpanAttributes['server.address'] AS server_address,
     SpanAttributes['server.port'] AS server_port,
     SpanAttributes['db.connection_string'] AS db_connection_string,
     SpanAttributes['db.name'] AS db_name,
     SpanAttributes['db.operation'] AS db_operation,
-    SpanAttributes['db.sql.table'] AS db_sql_table, 
+    SpanAttributes['db.sql.table'] AS db_sql_table,
     SpanAttributes['db.statement'] AS db_statement,
     SpanAttributes['db.system'] AS db_system,
     SpanAttributes['db.user'] AS db_user,
@@ -615,7 +615,7 @@ SELECT
     SpanAttributes['rpc.grpc.status_code'] AS grpc_status_code,
     SpanName AS span_name
 FROM otel_traces
-WHERE 
+WHERE
     ResourceAttributes['k8s.namespace.name'] = '%s'
     AND SpanKind IN ('Server', 'Client')
     AND SpanName != 'opentelemetry.proto.collector.trace.v1.TraceService/Export'
@@ -868,7 +868,7 @@ func CreateDeathStarBenchMaterializedView(db *sql.DB, namespace string, viewName
 	defer cancel()
 
 	sql := createDeathStarBenchMaterializedViewSQL(namespace, viewName)
-	
+
 	if _, err := db.ExecContext(ctx, sql); err != nil {
 		return fmt.Errorf("error creating DeathStarBench materialized view for namespace %s: %w", namespace, err)
 	}
@@ -884,7 +884,7 @@ func CreateOnlineBoutiqueMaterializedView(db *sql.DB, namespace string, viewName
 	defer cancel()
 
 	sql := createOnlineBoutiqueMaterializedViewSQL(namespace, viewName)
-	
+
 	if _, err := db.ExecContext(ctx, sql); err != nil {
 		return fmt.Errorf("error creating OnlineBoutique materialized view for namespace %s: %w", namespace, err)
 	}
@@ -1843,12 +1843,12 @@ func mapMediaMicroservicesRouteToService(endpoint *ServiceEndpoint) {
 		port    string
 	}{
 		// Cast info service
-		"/wrk2-api/cast-info":  {"cast-info-service", "9090"},
+		"/wrk2-api/cast-info":            {"cast-info-service", "9090"},
 		"/wrk2-api/movie/read-cast-info": {"cast-info-service", "9090"},
-		"CastInfoHandler":      {"cast-info-service", "9090"},
-		"WriteCastInfo":        {"cast-info-service", "9090"},
-		"ReadCastInfo":         {"cast-info-service", "9090"},
-		"/cast-info":          {"cast-info-service", "9090"},
+		"CastInfoHandler":                {"cast-info-service", "9090"},
+		"WriteCastInfo":                  {"cast-info-service", "9090"},
+		"ReadCastInfo":                   {"cast-info-service", "9090"},
+		"/cast-info":                     {"cast-info-service", "9090"},
 		// Compose review service
 		"/wrk2-api/review/compose": {"compose-review-service", "9090"},
 		"/wrk2-api/movie/register": {"compose-review-service", "9090"},
@@ -1859,37 +1859,37 @@ func mapMediaMicroservicesRouteToService(endpoint *ServiceEndpoint) {
 		"UploadUniqueId":           {"compose-review-service", "9090"},
 		"UploadUserId":             {"compose-review-service", "9090"},
 		"/compose":                 {"compose-review-service", "9090"},
-		"/register":               {"compose-review-service", "9090"},
+		"/register":                {"compose-review-service", "9090"},
 		// Movie ID service
 		"RegisterMovieId": {"movie-id-service", "9090"},
 		"MovieIdHandler":  {"movie-id-service", "9090"},
 		"/movie-id":       {"movie-id-service", "9090"},
 		// Movie info service
-		"/wrk2-api/movie-info":  {"movie-info-service", "9090"},
+		"/wrk2-api/movie-info":      {"movie-info-service", "9090"},
 		"/wrk2-api/movie/read-info": {"movie-info-service", "9090"},
-		"MovieInfoHandler":      {"movie-info-service", "9090"},
-		"WriteMovieInfo":        {"movie-info-service", "9090"},
-		"ReadMovieInfo":         {"movie-info-service", "9090"},
-		"/movie-info":           {"movie-info-service", "9090"},
-		"/read-info":            {"movie-info-service", "9090"},
+		"MovieInfoHandler":          {"movie-info-service", "9090"},
+		"WriteMovieInfo":            {"movie-info-service", "9090"},
+		"ReadMovieInfo":             {"movie-info-service", "9090"},
+		"/movie-info":               {"movie-info-service", "9090"},
+		"/read-info":                {"movie-info-service", "9090"},
 		// Movie review service
-		"StoreReview":        {"movie-review-service", "9090"},
-		"ReadMovieReviews":   {"movie-review-service", "9090"},
-		"/movie-review":      {"movie-review-service", "9090"},
-		"/review":            {"movie-review-service", "9090"},
+		"StoreReview":      {"movie-review-service", "9090"},
+		"ReadMovieReviews": {"movie-review-service", "9090"},
+		"/movie-review":    {"movie-review-service", "9090"},
+		"/review":          {"movie-review-service", "9090"},
 		// Page service
-		"/wrk2-api/page":  {"page-service", "9090"},
+		"/wrk2-api/page":            {"page-service", "9090"},
 		"/wrk2-api/movie/read-page": {"page-service", "9090"},
-		"ReadPage":        {"page-service", "9090"},
-		"/read-page":      {"page-service", "9090"},
+		"ReadPage":                  {"page-service", "9090"},
+		"/read-page":                {"page-service", "9090"},
 		// Plot service
-		"/wrk2-api/plot":  {"plot-service", "9090"},
+		"/wrk2-api/plot":            {"plot-service", "9090"},
 		"/wrk2-api/movie/read-plot": {"plot-service", "9090"},
-		"PlotHandler":     {"plot-service", "9090"},
-		"WritePlot":       {"plot-service", "9090"},
-		"ReadPlot":        {"plot-service", "9090"},
-		"/plot":           {"plot-service", "9090"},
-		"/read-plot":      {"plot-service", "9090"},
+		"PlotHandler":               {"plot-service", "9090"},
+		"WritePlot":                 {"plot-service", "9090"},
+		"ReadPlot":                  {"plot-service", "9090"},
+		"/plot":                     {"plot-service", "9090"},
+		"/read-plot":                {"plot-service", "9090"},
 		// Rating service
 		"StoreRating": {"rating-service", "9090"},
 		"ReadRatings": {"rating-service", "9090"},
@@ -1899,25 +1899,25 @@ func mapMediaMicroservicesRouteToService(endpoint *ServiceEndpoint) {
 		"ReadReviews":        {"review-storage-service", "9090"},
 		"/review-storage":    {"review-storage-service", "9090"},
 		// Text service
-		"TextHandler":  {"text-service", "9090"},
-		"StoreText":    {"text-service", "9090"},
-		"/text":        {"text-service", "9090"},
+		"TextHandler": {"text-service", "9090"},
+		"StoreText":   {"text-service", "9090"},
+		"/text":       {"text-service", "9090"},
 		// Unique ID service
 		"UniqueIdHandler": {"unique-id-service", "9090"},
 		"ComposeUniqueId": {"unique-id-service", "9090"},
 		"/unique-id":      {"unique-id-service", "9090"},
 		// User service
-		"/wrk2-api/user":  {"user-service", "9090"},
-		"UserHandler":     {"user-service", "9090"},
-		"RegisterUser":    {"user-service", "9090"},
-		"Login":           {"user-service", "9090"},
-		"/user":           {"user-service", "9090"},
+		"/wrk2-api/user": {"user-service", "9090"},
+		"UserHandler":    {"user-service", "9090"},
+		"RegisterUser":   {"user-service", "9090"},
+		"Login":          {"user-service", "9090"},
+		"/user":          {"user-service", "9090"},
 		// User review service
-		"ReadUserReviews":    {"user-review-service", "9090"},
-		"StoreUserReview":    {"user-review-service", "9090"},
-		"/user-review":       {"user-review-service", "9090"},
+		"ReadUserReviews": {"user-review-service", "9090"},
+		"StoreUserReview": {"user-review-service", "9090"},
+		"/user-review":    {"user-review-service", "9090"},
 		// Frontend - removed overly broad "/" pattern
-		"/wrk2-api/home":     {"nginx-web-server", "8080"},
+		"/wrk2-api/home": {"nginx-web-server", "8080"},
 	}
 
 	// Sort patterns by length (longest first) to ensure more specific patterns match first
@@ -1979,25 +1979,25 @@ func mapSocialNetworkRouteToService(endpoint *ServiceEndpoint) {
 		"StoreMedia":         {"media-service", "9090"},
 		"/media":             {"media-service", "9090"},
 		// Post storage service
-		"StorePost":       {"post-storage-service", "9090"},
-		"ReadPost":        {"post-storage-service", "9090"},
-		"ReadPosts":       {"post-storage-service", "9090"},
-		"/post-storage":   {"post-storage-service", "9090"},
+		"StorePost":     {"post-storage-service", "9090"},
+		"ReadPost":      {"post-storage-service", "9090"},
+		"ReadPosts":     {"post-storage-service", "9090"},
+		"/post-storage": {"post-storage-service", "9090"},
 		// Social graph service
-		"/wrk2-api/user/follow":     {"social-graph-service", "9090"},
-		"/wrk2-api/user/unfollow":   {"social-graph-service", "9090"},
-		"Follow":                    {"social-graph-service", "9090"},
-		"Unfollow":                  {"social-graph-service", "9090"},
-		"GetFollowers":              {"social-graph-service", "9090"},
-		"GetFollowees":              {"social-graph-service", "9090"},
-		"InsertUser":                {"social-graph-service", "9090"},
-		"FollowWithUsername":        {"social-graph-service", "9090"},
-		"UnfollowWithUsername":      {"social-graph-service", "9090"},
-		"/social-graph":             {"social-graph-service", "9090"},
+		"/wrk2-api/user/follow":   {"social-graph-service", "9090"},
+		"/wrk2-api/user/unfollow": {"social-graph-service", "9090"},
+		"Follow":                  {"social-graph-service", "9090"},
+		"Unfollow":                {"social-graph-service", "9090"},
+		"GetFollowers":            {"social-graph-service", "9090"},
+		"GetFollowees":            {"social-graph-service", "9090"},
+		"InsertUser":              {"social-graph-service", "9090"},
+		"FollowWithUsername":      {"social-graph-service", "9090"},
+		"UnfollowWithUsername":    {"social-graph-service", "9090"},
+		"/social-graph":           {"social-graph-service", "9090"},
 		// Text service
-		"TextHandler":   {"text-service", "9090"},
-		"ProcessText":   {"text-service", "9090"},
-		"/text":         {"text-service", "9090"},
+		"TextHandler": {"text-service", "9090"},
+		"ProcessText": {"text-service", "9090"},
+		"/text":       {"text-service", "9090"},
 		// Unique ID service
 		"UniqueIdHandler": {"unique-id-service", "9090"},
 		"ComposeUniqueId": {"unique-id-service", "9090"},
@@ -2010,9 +2010,9 @@ func mapSocialNetworkRouteToService(endpoint *ServiceEndpoint) {
 		"/url-shorten":           {"url-shorten-service", "9090"},
 		"/shorten":               {"url-shorten-service", "9090"},
 		// User mention service
-		"UserMentionHandler":   {"user-mention-service", "9090"},
-		"ComposeUserMentions":  {"user-mention-service", "9090"},
-		"/user-mention":        {"user-mention-service", "9090"},
+		"UserMentionHandler":  {"user-mention-service", "9090"},
+		"ComposeUserMentions": {"user-mention-service", "9090"},
+		"/user-mention":       {"user-mention-service", "9090"},
 		// User service
 		"/wrk2-api/user/register": {"user-service", "9090"},
 		"/wrk2-api/user/login":    {"user-service", "9090"},
@@ -2071,50 +2071,50 @@ func mapHotelReservationRouteToService(endpoint *ServiceEndpoint) {
 		port    string
 	}{
 		// Attractions service
-		"/attractions":     {"attractions", "8089"},
-		"GetAttractions":   {"attractions", "8089"},
+		"/attractions":            {"attractions", "8089"},
+		"GetAttractions":          {"attractions", "8089"},
 		"attractions.Attractions": {"attractions", "8089"},
 		// Frontend service - removed overly broad "/" pattern
-		"/hotels":          {"frontend", "5000"},
-		"/recommendations": {"frontend", "5000"},
-		"/user":            {"frontend", "5000"},
-		"/reservation":     {"frontend", "5000"},
+		"/hotels":           {"frontend", "5000"},
+		"/recommendations":  {"frontend", "5000"},
+		"/user":             {"frontend", "5000"},
+		"/reservation":      {"frontend", "5000"},
 		"frontend.Frontend": {"frontend", "5000"},
 		// Geo service
-		"/geo":           {"geo", "8083"},
-		"NearbyGeo":      {"geo", "8083"},
-		"GetGeo":         {"geo", "8083"},
-		"geo.Geo":        {"geo", "8083"},
+		"/geo":      {"geo", "8083"},
+		"NearbyGeo": {"geo", "8083"},
+		"GetGeo":    {"geo", "8083"},
+		"geo.Geo":   {"geo", "8083"},
 		// Profile service
-		"/profile":       {"profile", "8081"},
-		"GetProfiles":    {"profile", "8081"},
-		"GetProfile":     {"profile", "8081"},
+		"/profile":        {"profile", "8081"},
+		"GetProfiles":     {"profile", "8081"},
+		"GetProfile":      {"profile", "8081"},
 		"profile.Profile": {"profile", "8081"},
 		// Rate service
-		"/rate":          {"rate", "8084"},
-		"GetRates":       {"rate", "8084"},
-		"GetRate":        {"rate", "8084"},
-		"rate.Rate":      {"rate", "8084"},
+		"/rate":     {"rate", "8084"},
+		"GetRates":  {"rate", "8084"},
+		"GetRate":   {"rate", "8084"},
+		"rate.Rate": {"rate", "8084"},
 		// Recommendation service
-		"/recommendation": {"recommendation", "8085"},
-		"GetRecommendations": {"recommendation", "8085"},
+		"/recommendation":               {"recommendation", "8085"},
+		"GetRecommendations":            {"recommendation", "8085"},
 		"recommendation.Recommendation": {"recommendation", "8085"},
 		// Reservation service
-		"/reserve":       {"reservation", "8087"},
-		"MakeReservation": {"reservation", "8087"},
-		"CheckAvailability": {"reservation", "8087"},
+		"/reserve":                {"reservation", "8087"},
+		"MakeReservation":         {"reservation", "8087"},
+		"CheckAvailability":       {"reservation", "8087"},
 		"reservation.Reservation": {"reservation", "8087"},
 		// Search service
-		"/search":        {"search", "8082"},
-		"NearbySearch":   {"search", "8082"},
-		"search.Search":  {"search", "8082"},
+		"/search":       {"search", "8082"},
+		"NearbySearch":  {"search", "8082"},
+		"search.Search": {"search", "8082"},
 		// User service
-		"/login":         {"user", "8086"},
-		"/register":      {"user", "8086"},
-		"Login":          {"user", "8086"},
-		"Register":       {"user", "8086"},
-		"CheckUser":      {"user", "8086"},
-		"user.User":      {"user", "8086"},
+		"/login":    {"user", "8086"},
+		"/register": {"user", "8086"},
+		"Login":     {"user", "8086"},
+		"Register":  {"user", "8086"},
+		"CheckUser": {"user", "8086"},
+		"user.User": {"user", "8086"},
 	}
 
 	// Sort patterns by length (longest first) to ensure more specific patterns match first
@@ -2154,38 +2154,38 @@ func mapOnlineBoutiqueRouteToService(endpoint *ServiceEndpoint) {
 		port    string
 	}{
 		// Frontend service
-		"/":                   {"frontend", "80"},
-		"/product":            {"frontend", "80"},
-		"/cart":               {"frontend", "80"},
-		"/checkout":           {"frontend", "80"},
-		"frontend":            {"frontend", "80"},
+		"/":         {"frontend", "80"},
+		"/product":  {"frontend", "80"},
+		"/cart":     {"frontend", "80"},
+		"/checkout": {"frontend", "80"},
+		"frontend":  {"frontend", "80"},
 		// Ad service
-		"/hipstershop.AdService":        {"adservice", "9555"},
-		"AdService":                     {"adservice", "9555"},
-		"GetAds":                        {"adservice", "9555"},
+		"/hipstershop.AdService": {"adservice", "9555"},
+		"AdService":              {"adservice", "9555"},
+		"GetAds":                 {"adservice", "9555"},
 		// Cart service
-		"/hipstershop.CartService":      {"cartservice", "7070"},
-		"CartService":                   {"cartservice", "7070"},
-		"AddItem":                       {"cartservice", "7070"},
-		"GetCart":                       {"cartservice", "7070"},
-		"EmptyCart":                     {"cartservice", "7070"},
+		"/hipstershop.CartService": {"cartservice", "7070"},
+		"CartService":              {"cartservice", "7070"},
+		"AddItem":                  {"cartservice", "7070"},
+		"GetCart":                  {"cartservice", "7070"},
+		"EmptyCart":                {"cartservice", "7070"},
 		// Checkout service
-		"/hipstershop.CheckoutService":  {"checkoutservice", "5050"},
-		"CheckoutService":               {"checkoutservice", "5050"},
-		"PlaceOrder":                    {"checkoutservice", "5050"},
+		"/hipstershop.CheckoutService": {"checkoutservice", "5050"},
+		"CheckoutService":              {"checkoutservice", "5050"},
+		"PlaceOrder":                   {"checkoutservice", "5050"},
 		// Currency service
-		"/hipstershop.CurrencyService":  {"currencyservice", "7000"},
-		"CurrencyService":               {"currencyservice", "7000"},
-		"GetSupportedCurrencies":        {"currencyservice", "7000"},
-		"Convert":                       {"currencyservice", "7000"},
+		"/hipstershop.CurrencyService": {"currencyservice", "7000"},
+		"CurrencyService":              {"currencyservice", "7000"},
+		"GetSupportedCurrencies":       {"currencyservice", "7000"},
+		"Convert":                      {"currencyservice", "7000"},
 		// Email service
-		"/hipstershop.EmailService":     {"emailservice", "5000"},
-		"EmailService":                  {"emailservice", "5000"},
-		"SendOrderConfirmation":         {"emailservice", "5000"},
+		"/hipstershop.EmailService": {"emailservice", "5000"},
+		"EmailService":              {"emailservice", "5000"},
+		"SendOrderConfirmation":     {"emailservice", "5000"},
 		// Payment service
-		"/hipstershop.PaymentService":   {"paymentservice", "50051"},
-		"PaymentService":                {"paymentservice", "50051"},
-		"Charge":                        {"paymentservice", "50051"},
+		"/hipstershop.PaymentService": {"paymentservice", "50051"},
+		"PaymentService":              {"paymentservice", "50051"},
+		"Charge":                      {"paymentservice", "50051"},
 		// Product catalog service
 		"/hipstershop.ProductCatalogService": {"productcatalogservice", "3550"},
 		"ProductCatalogService":              {"productcatalogservice", "3550"},
@@ -2197,10 +2197,10 @@ func mapOnlineBoutiqueRouteToService(endpoint *ServiceEndpoint) {
 		"RecommendationService":              {"recommendationservice", "8080"},
 		"ListRecommendations":                {"recommendationservice", "8080"},
 		// Shipping service
-		"/hipstershop.ShippingService":  {"shippingservice", "50051"},
-		"ShippingService":               {"shippingservice", "50051"},
-		"GetQuote":                      {"shippingservice", "50051"},
-		"ShipOrder":                     {"shippingservice", "50051"},
+		"/hipstershop.ShippingService": {"shippingservice", "50051"},
+		"ShippingService":              {"shippingservice", "50051"},
+		"GetQuote":                     {"shippingservice", "50051"},
+		"ShipOrder":                    {"shippingservice", "50051"},
 	}
 
 	// Sort patterns by length (longest first) to match more specific patterns first
@@ -2283,17 +2283,17 @@ func mapSocialNetworkGRPCToService(operation *GRPCOperation, rpcService string) 
 		service string
 		port    string
 	}{
-		"ComposePostService":   {"compose-post-service", "9090"},
-		"HomeTimelineService":  {"home-timeline-service", "9090"},
-		"MediaService":         {"media-service", "9090"},
-		"PostStorageService":   {"post-storage-service", "9090"},
-		"SocialGraphService":   {"social-graph-service", "9090"},
-		"TextService":          {"text-service", "9090"},
-		"UniqueIdService":      {"unique-id-service", "9090"},
-		"UrlShortenService":    {"url-shorten-service", "9090"},
-		"UserMentionService":   {"user-mention-service", "9090"},
-		"UserService":          {"user-service", "9090"},
-		"UserTimelineService":  {"user-timeline-service", "9090"},
+		"ComposePostService":  {"compose-post-service", "9090"},
+		"HomeTimelineService": {"home-timeline-service", "9090"},
+		"MediaService":        {"media-service", "9090"},
+		"PostStorageService":  {"post-storage-service", "9090"},
+		"SocialGraphService":  {"social-graph-service", "9090"},
+		"TextService":         {"text-service", "9090"},
+		"UniqueIdService":     {"unique-id-service", "9090"},
+		"UrlShortenService":   {"url-shorten-service", "9090"},
+		"UserMentionService":  {"user-mention-service", "9090"},
+		"UserService":         {"user-service", "9090"},
+		"UserTimelineService": {"user-timeline-service", "9090"},
 	}
 
 	for pattern, service := range serviceMap {
@@ -2323,15 +2323,15 @@ func mapHotelReservationGRPCToService(operation *GRPCOperation, rpcService strin
 		"SearchService":         {"search", "8082"},
 		"UserService":           {"user", "8086"},
 		// DeathStarBench hotelReservation gRPC service patterns
-		"attractions.Attractions": {"attractions", "8089"},
-		"frontend.Frontend":       {"frontend", "5000"},
-		"geo.Geo":                 {"geo", "8083"},
-		"profile.Profile":         {"profile", "8081"},
-		"rate.Rate":               {"rate", "8084"},
+		"attractions.Attractions":       {"attractions", "8089"},
+		"frontend.Frontend":             {"frontend", "5000"},
+		"geo.Geo":                       {"geo", "8083"},
+		"profile.Profile":               {"profile", "8081"},
+		"rate.Rate":                     {"rate", "8084"},
 		"recommendation.Recommendation": {"recommendation", "8085"},
-		"reservation.Reservation": {"reservation", "8087"},
-		"search.Search":           {"search", "8082"},
-		"user.User":               {"user", "8086"},
+		"reservation.Reservation":       {"reservation", "8087"},
+		"search.Search":                 {"search", "8082"},
+		"user.User":                     {"user", "8086"},
 	}
 
 	for pattern, service := range serviceMap {
@@ -2350,24 +2350,24 @@ func mapOnlineBoutiqueGRPCToService(operation *GRPCOperation, rpcService string)
 		service string
 		port    string
 	}{
-		"hipstershop.AdService":              {"adservice", "9555"},
-		"AdService":                          {"adservice", "9555"},
-		"hipstershop.CartService":            {"cartservice", "7070"},
-		"CartService":                        {"cartservice", "7070"},
-		"hipstershop.CheckoutService":        {"checkoutservice", "5050"},
-		"CheckoutService":                    {"checkoutservice", "5050"},
-		"hipstershop.CurrencyService":        {"currencyservice", "7000"},
-		"CurrencyService":                    {"currencyservice", "7000"},
-		"hipstershop.EmailService":           {"emailservice", "5000"},
-		"EmailService":                       {"emailservice", "5000"},
-		"hipstershop.PaymentService":         {"paymentservice", "50051"},
-		"PaymentService":                     {"paymentservice", "50051"},
-		"hipstershop.ProductCatalogService":  {"productcatalogservice", "3550"},
-		"ProductCatalogService":              {"productcatalogservice", "3550"},
-		"hipstershop.RecommendationService":  {"recommendationservice", "8080"},
-		"RecommendationService":              {"recommendationservice", "8080"},
-		"hipstershop.ShippingService":        {"shippingservice", "50051"},
-		"ShippingService":                    {"shippingservice", "50051"},
+		"hipstershop.AdService":             {"adservice", "9555"},
+		"AdService":                         {"adservice", "9555"},
+		"hipstershop.CartService":           {"cartservice", "7070"},
+		"CartService":                       {"cartservice", "7070"},
+		"hipstershop.CheckoutService":       {"checkoutservice", "5050"},
+		"CheckoutService":                   {"checkoutservice", "5050"},
+		"hipstershop.CurrencyService":       {"currencyservice", "7000"},
+		"CurrencyService":                   {"currencyservice", "7000"},
+		"hipstershop.EmailService":          {"emailservice", "5000"},
+		"EmailService":                      {"emailservice", "5000"},
+		"hipstershop.PaymentService":        {"paymentservice", "50051"},
+		"PaymentService":                    {"paymentservice", "50051"},
+		"hipstershop.ProductCatalogService": {"productcatalogservice", "3550"},
+		"ProductCatalogService":             {"productcatalogservice", "3550"},
+		"hipstershop.RecommendationService": {"recommendationservice", "8080"},
+		"RecommendationService":             {"recommendationservice", "8080"},
+		"hipstershop.ShippingService":       {"shippingservice", "50051"},
+		"ShippingService":                   {"shippingservice", "50051"},
 	}
 
 	for pattern, service := range serviceMap {

@@ -4,13 +4,13 @@ package serviceendpoints
 
 // ServiceEndpoint represents a service endpoint from ClickHouse analysis
 type ServiceEndpoint struct {
-	ServiceName      string
-	RequestMethod    string
-	ResponseStatus   string
-	Route            string
-	ServerAddress    string
-	ServerPort       string
-	SpanName         string
+	ServiceName    string
+	RequestMethod  string
+	ResponseStatus string
+	Route          string
+	ServerAddress  string
+	ServerPort     string
+	SpanName       string
 }
 
 // ServiceEndpoints maps service names to their endpoints

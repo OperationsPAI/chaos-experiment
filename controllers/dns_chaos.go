@@ -29,7 +29,7 @@ func CreateDnsChaos(cli client.Client, ctx context.Context, namespace string, ap
 		logrus.Errorf("Failed to create DNS chaos: %v", err)
 		return "", err
 	}
-	create, err := dnsChaos.ValidateCreate()
+	create, err := dnsChaos.ValidateCreate(ctx, dnsChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create DNS chaos: %v", err)
 		return "", err
@@ -115,7 +115,7 @@ func ScheduleDnsChaos(cli client.Client, namespace string, appList []string, act
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(context.Background(), workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return
