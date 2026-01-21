@@ -124,6 +124,7 @@ func GenerateRuntimeMutatorChaosSpec(namespace string, appName string, duration 
 						},
 					},
 				},
+				Mode: chaosmeshv1alpha1.OneMode,
 			},
 		},
 	}

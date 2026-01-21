@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/LGU-SE-Internal/chaos-experiment/chaos"
 	"github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -30,6 +31,7 @@ func TestCreateJVMRuntimeMutatorChaos(t *testing.T) {
 		mutationType string
 		className    string
 		methodName   string
+		opts         []chaos.OptChaos
 		wantErr      bool
 		errorMsg     string
 	}{
@@ -38,21 +40,30 @@ func TestCreateJVMRuntimeMutatorChaos(t *testing.T) {
 			mutationType: "constant",
 			className:    "com.example.TestClass",
 			methodName:   "testMethod",
-			wantErr:      false,
+			opts: []chaos.OptChaos{
+				chaos.WithRuntimeMutatorConfig("100", "200"),
+			},
+			wantErr: false,
 		},
 		{
 			name:         "valid operator mutation",
 			mutationType: "operator",
 			className:    "com.example.TestClass",
 			methodName:   "testMethod",
-			wantErr:      false,
+			opts: []chaos.OptChaos{
+				chaos.WithRuntimeMutatorStrategy("add_to_sub"),
+			},
+			wantErr: false,
 		},
 		{
 			name:         "valid string mutation",
 			mutationType: "string",
 			className:    "com.example.TestClass",
 			methodName:   "testMethod",
-			wantErr:      false,
+			opts: []chaos.OptChaos{
+				chaos.WithRuntimeMutatorStrategy("empty"),
+			},
+			wantErr: false,
 		},
 		{
 			name:         "invalid mutation type",
@@ -89,6 +100,7 @@ func TestCreateJVMRuntimeMutatorChaos(t *testing.T) {
 				duration,
 				annotations,
 				labels,
+				tt.opts...,
 			)
 
 			if tt.wantErr {
@@ -127,6 +139,7 @@ func TestAddJVMRuntimeMutatorWorkflowNodes(t *testing.T) {
 		methodName,
 		injectTime,
 		sleepTime,
+		chaos.WithRuntimeMutatorConfig("100", "200"),
 	)
 
 	// Should add 4 templates (2 apps * (1 chaos + 1 sleep))
@@ -191,6 +204,7 @@ func TestScheduleJVMRuntimeMutator(t *testing.T) {
 		mutationType,
 		className,
 		methodName,
+		chaos.WithRuntimeMutatorStrategy("add_to_sub"),
 	)
 
 	// Verify that Create was called
