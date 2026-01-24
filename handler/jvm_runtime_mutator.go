@@ -12,16 +12,39 @@ import (
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// MutationType constants for JVM runtime mutator
+const (
+	MutationTypeConstant = 0 // constant mutation
+	MutationTypeOperator = 1 // operator mutation
+	MutationTypeString   = 2 // string mutation
+)
+
+// MutationTypeNames maps mutation type index to name
+var MutationTypeNames = []string{"constant", "operator", "string"}
+
+// ConstantMutationConfigs defines predefined constant mutation configurations
+// Each entry is a pair [from, to]
+var ConstantMutationConfigs = [][2]string{
+	{"true", "false"},              // 0: boolean true to false
+	{"false", "true"},              // 1: boolean false to true
+	{"0", "1"},                     // 2: zero to one
+	{"1", "0"},                     // 3: one to zero
+	{"100", "0"},                   // 4: hundred to zero
+	{"\"success\"", "\"failure\""}, // 5: success to failure string
+	{"\"ok\"", "\"error\""},        // 6: ok to error string
+	{"-1", "0"},                    // 7: negative one to zero
+	{"0", "-1"},                    // 8: zero to negative one
+	{"1000", "1"},                  // 9: large value to small
+	{"60", "1"},                    // 10: timeout value mutation
+}
+
 // JVMRuntimeMutatorSpec defines the JVM runtime mutator chaos injection parameters
 type JVMRuntimeMutatorSpec struct {
-	Duration         int    `range:"1-60" description:"Time Unit Minute"`
-	System           int    `range:"0-0" dynamic:"true" description:"System Index"`
-	MethodIdx        int    `range:"0-0" dynamic:"true" description:"Flattened app+method index"`
-	MutationType     string `range:"constant,operator,string" description:"Mutation Type"`
-	MutationOpt      int    `range:"0-10" description:"Mutation strategy option"`
-	MutationFrom     string `description:"Mutation from value (for constant mutations)"`
-	MutationTo       string `description:"Mutation to value (for constant mutations)"`
-	MutationStrategy string `description:"Mutation strategy (for operator/string mutations)"`
+	Duration     int `range:"1-60" description:"Time Unit Minute"`
+	System       int `range:"0-0" dynamic:"true" description:"System Index"`
+	MethodIdx    int `range:"0-0" dynamic:"true" description:"Flattened app+method index"`
+	MutationType int `range:"0-2" description:"Mutation Type: 0=constant, 1=operator, 2=string"`
+	MutationOpt  int `range:"0-10" description:"Mutation option: for constant(0-10 predefined pairs), operator(0-3 strategies), string(0-5 strategies)"`
 }
 
 func (s *JVMRuntimeMutatorSpec) Create(cli cli.Client, opts ...Option) (string, error) {
@@ -66,39 +89,46 @@ func (s *JVMRuntimeMutatorSpec) Create(cli cli.Client, opts ...Option) (string, 
 
 	var optss []chaos.OptChaos
 
+	// Get mutation type name from index
+	if s.MutationType < 0 || s.MutationType >= len(MutationTypeNames) {
+		return "", fmt.Errorf("mutation type index out of range: %d (max: %d)", s.MutationType, len(MutationTypeNames)-1)
+	}
+	mutationTypeName := MutationTypeNames[s.MutationType]
+
 	// Configure mutation based on type
 	switch s.MutationType {
-	case "constant":
+	case MutationTypeConstant:
+		from, to := s.getConstantConfig()
 		optss = append(optss,
 			chaos.WithRuntimeMutatorAction("constant"),
-			chaos.WithRuntimeMutatorConfig(s.MutationFrom, s.MutationTo),
+			chaos.WithRuntimeMutatorConfig(from, to),
 		)
-	case "operator":
+	case MutationTypeOperator:
 		strategy := s.getMutationStrategy()
 		optss = append(optss,
 			chaos.WithRuntimeMutatorAction("operator"),
 			chaos.WithRuntimeMutatorStrategy(strategy),
 		)
-	case "string":
+	case MutationTypeString:
 		strategy := s.getMutationStrategy()
 		optss = append(optss,
 			chaos.WithRuntimeMutatorAction("string"),
 			chaos.WithRuntimeMutatorStrategy(strategy),
 		)
 	default:
-		return "", fmt.Errorf("unsupported mutation type: %s", s.MutationType)
+		return "", fmt.Errorf("unsupported mutation type: %d", s.MutationType)
 	}
 
 	return controllers.CreateJVMRuntimeMutatorChaos(cli, ctx, ns, appName,
-		className, methodName, s.MutationType, duration, annotations, labels, optss...)
+		className, methodName, mutationTypeName, duration, annotations, labels, optss...)
 }
 
 func (s *JVMRuntimeMutatorSpec) getMutationStrategy() string {
-	strategies := map[string][]string{
-		"operator": {
+	strategies := map[int][]string{
+		MutationTypeOperator: {
 			"add_to_sub", "sub_to_add", "mul_to_div", "div_to_mul",
 		},
-		"string": {
+		MutationTypeString: {
 			"empty", "null", "reverse", "uppercase", "lowercase", "random",
 		},
 	}
@@ -110,8 +140,18 @@ func (s *JVMRuntimeMutatorSpec) getMutationStrategy() string {
 	}
 
 	// Default strategies
-	if s.MutationType == "operator" {
+	if s.MutationType == MutationTypeOperator {
 		return "add_to_sub"
 	}
 	return "empty"
+}
+
+// getConstantConfig returns the from/to pair for constant mutation based on MutationOpt
+func (s *JVMRuntimeMutatorSpec) getConstantConfig() (string, string) {
+	if s.MutationOpt >= 0 && s.MutationOpt < len(ConstantMutationConfigs) {
+		config := ConstantMutationConfigs[s.MutationOpt]
+		return config[0], config[1]
+	}
+	// Default: true to false
+	return "true", "false"
 }

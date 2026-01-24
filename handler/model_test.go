@@ -17,17 +17,17 @@ func TestGenerateRandomAction(t *testing.T) {
 	for range 1000 {
 		spec, err := StructToNode[InjectionConf](context.Background(), SystemTrainTicket)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		podNode, err := randomGenerateNode(spec)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		conf, err := NodeToStruct[InjectionConf](context.Background(), podNode)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		pp.Println(conf.GetDisplayConfig(context.Background()))
