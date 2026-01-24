@@ -653,3 +653,12 @@ func (s *JVMMySQLExceptionSpec) GetGroundtruth(ctx context.Context) (Groundtruth
 	}
 	return GetGroundtruthFromDatabaseIdx(ctx, system, namespace, s.DatabaseIdx)
 }
+
+func (s *JVMRuntimeMutatorSpec) GetGroundtruth(ctx context.Context) (Groundtruth, error) {
+	system := systemconfig.GetAllSystemTypes()[s.System]
+	namespace, err := systemconfig.GetNamespaceByIndex(system, defaultStartIndex)
+	if err != nil {
+		return Groundtruth{}, err
+	}
+	return GetGroundtruthFromMethodIdx(ctx, system, namespace, s.MethodIdx)
+}
