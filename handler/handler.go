@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/client"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
-	"github.com/LGU-SE-Internal/chaos-experiment/utils"
+	"github.com/OperationsPAI/chaos-experiment/client"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/utils"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -249,7 +249,6 @@ var SpecMap = map[ChaosType]any{
 	JVMMemoryStress:          JVMMemoryStressSpec{},
 	JVMMySQLLatency:          JVMMySQLLatencySpec{},
 	JVMMySQLException:        JVMMySQLExceptionSpec{},
-	JVMRuntimeMutator:        JVMRuntimeMutatorSpec{},
 }
 
 var ChaosHandlers = map[ChaosType]Injection{
@@ -284,7 +283,6 @@ var ChaosHandlers = map[ChaosType]Injection{
 	JVMMemoryStress:          &JVMMemoryStressSpec{},
 	JVMMySQLLatency:          &JVMMySQLLatencySpec{},
 	JVMMySQLException:        &JVMMySQLExceptionSpec{},
-	JVMRuntimeMutator:        &JVMRuntimeMutatorSpec{},
 }
 
 type InjectionConf struct {
@@ -319,7 +317,6 @@ type InjectionConf struct {
 	JVMMemoryStress          *JVMMemoryStressSpec          `range:"0-3"`
 	JVMMySQLLatency          *JVMMySQLLatencySpec          `range:"0-3"`
 	JVMMySQLException        *JVMMySQLExceptionSpec        `range:"0-2"`
-	JVMRuntimeMutator        *JVMRuntimeMutatorSpec        `range:"0-3"`
 }
 
 func (ic *InjectionConf) GetDisplayConfig(ctx context.Context) (map[string]any, error) {
@@ -421,7 +418,7 @@ func BatchCreate(ctx context.Context, confs []InjectionConf, system SystemType, 
 	}
 
 	results := make([]result, len(confs))
-	for i := 0; i < len(confs); i++ {
+	for range confs {
 		res := <-resultChan
 		results[res.index] = res
 	}

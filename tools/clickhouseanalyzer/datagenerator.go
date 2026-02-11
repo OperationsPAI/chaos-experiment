@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 // ServiceEndpoints holds the service endpoints for a service

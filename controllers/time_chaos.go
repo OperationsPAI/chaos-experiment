@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/chaos"
+	"github.com/OperationsPAI/chaos-experiment/chaos"
 	"github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -21,7 +21,7 @@ func CreateTimeChaos(cli client.Client, namespace string, appName string, timeOf
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := timeChaos.ValidateCreate(context.Background(), timeChaos)
+	create, err := timeChaos.ValidateCreate()
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -50,7 +50,7 @@ func CreateTimeChaosWithContainer(cli client.Client, ctx context.Context, namesp
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := timeChaos.ValidateCreate(ctx, timeChaos)
+	create, err := timeChaos.ValidateCreate()
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -131,7 +131,7 @@ func ScheduleTimeChaos(cli client.Client, namespace string, appList []string, ti
 		logrus.Errorf("Failed to create chaos workflow: %v", err)
 	}
 
-	create, err := workflowChaos.ValidateCreate(context.Background(), workflowChaos)
+	create, err := workflowChaos.ValidateCreate()
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}

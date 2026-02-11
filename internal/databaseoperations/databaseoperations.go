@@ -3,14 +3,14 @@
 package databaseoperations
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 
-	hsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/databaseoperations"
-	mediadb "github.com/LGU-SE-Internal/chaos-experiment/internal/media/databaseoperations"
-	obdb "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/databaseoperations"
-	oteldemodb "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/databaseoperations"
-	sndb "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/databaseoperations"
-	tsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/databaseoperations"
+	hsdb "github.com/OperationsPAI/chaos-experiment/internal/hs/databaseoperations"
+	mediadb "github.com/OperationsPAI/chaos-experiment/internal/media/databaseoperations"
+	obdb "github.com/OperationsPAI/chaos-experiment/internal/ob/databaseoperations"
+	oteldemodb "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/databaseoperations"
+	sndb "github.com/OperationsPAI/chaos-experiment/internal/sn/databaseoperations"
+	tsdb "github.com/OperationsPAI/chaos-experiment/internal/ts/databaseoperations"
 )
 
 // DatabaseOperation represents a database operation from ClickHouse analysis

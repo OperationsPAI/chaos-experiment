@@ -3,14 +3,14 @@
 package serviceendpoints
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 
-	hsendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/serviceendpoints"
-	mediaendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/media/serviceendpoints"
-	obendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/serviceendpoints"
-	oteldemoendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/serviceendpoints"
-	snendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/serviceendpoints"
-	tsendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/serviceendpoints"
+	hsendpoints "github.com/OperationsPAI/chaos-experiment/internal/hs/serviceendpoints"
+	mediaendpoints "github.com/OperationsPAI/chaos-experiment/internal/media/serviceendpoints"
+	obendpoints "github.com/OperationsPAI/chaos-experiment/internal/ob/serviceendpoints"
+	oteldemoendpoints "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/serviceendpoints"
+	snendpoints "github.com/OperationsPAI/chaos-experiment/internal/sn/serviceendpoints"
+	tsendpoints "github.com/OperationsPAI/chaos-experiment/internal/ts/serviceendpoints"
 )
 
 // ServiceEndpoint represents a service endpoint from ClickHouse analysis

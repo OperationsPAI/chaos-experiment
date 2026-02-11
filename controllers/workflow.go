@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/chaos"
+	"github.com/OperationsPAI/chaos-experiment/chaos"
 	"github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -61,7 +61,7 @@ func CreateWorkflow(cli client.Client, workflowSpec *v1alpha1.WorkflowSpec, name
 		logrus.Errorf("Failed to create chaos: %v", err)
 	}
 
-	create, err := workflowChaos.ValidateCreate(context.Background(), workflowChaos)
+	create, err := workflowChaos.ValidateCreate()
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}

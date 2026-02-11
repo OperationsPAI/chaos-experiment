@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 // MetricType defines the type of metrics for groundtruth
@@ -652,13 +652,4 @@ func (s *JVMMySQLExceptionSpec) GetGroundtruth(ctx context.Context) (Groundtruth
 		return Groundtruth{}, err
 	}
 	return GetGroundtruthFromDatabaseIdx(ctx, system, namespace, s.DatabaseIdx)
-}
-
-func (s *JVMRuntimeMutatorSpec) GetGroundtruth(ctx context.Context) (Groundtruth, error) {
-	system := systemconfig.GetAllSystemTypes()[s.System]
-	namespace, err := systemconfig.GetNamespaceByIndex(system, defaultStartIndex)
-	if err != nil {
-		return Groundtruth{}, err
-	}
-	return GetGroundtruthFromMethodIdx(ctx, system, namespace, s.MethodIdx)
 }

@@ -7,10 +7,10 @@ import (
 	"sort"
 	"text/tabwriter"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/databaseoperations"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/javaclassmethods"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/databaseoperations"
+	"github.com/OperationsPAI/chaos-experiment/internal/javaclassmethods"
+	"github.com/OperationsPAI/chaos-experiment/internal/serviceendpoints"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func main() {

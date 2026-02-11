@@ -3,10 +3,10 @@
 package javaclassmethods
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 
-	oteldemojvm "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/javaclassmethods"
-	tsjvm "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/javaclassmethods"
+	oteldemojvm "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/javaclassmethods"
+	tsjvm "github.com/OperationsPAI/chaos-experiment/internal/ts/javaclassmethods"
 )
 
 // ClassMethodEntry represents a class-method pair from Java analysis

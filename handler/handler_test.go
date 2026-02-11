@@ -65,6 +65,14 @@ func TestHandler2(t *testing.T) {
 			return
 		}
 
+		groundtruth, err := conf.GetGroundtruth(ctx)
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+
+		pp.Println(groundtruth)
+
 		displayConfig, err := conf.GetDisplayConfig(ctx)
 		if err != nil {
 			t.Error(err.Error())

@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 /*
@@ -163,7 +163,7 @@ func NodeToStruct[T any](ctx context.Context, node *Node) (*T, error) {
 	nodeCtxMap[node] = ctx
 
 	val := reflect.New(rt).Elem()
-	if rt.Name() == "InjectionConf" && rt.PkgPath() == "github.com/LGU-SE-Internal/chaos-experiment/handler" {
+	if rt.Name() == "InjectionConf" && rt.PkgPath() == "github.com/OperationsPAI/chaos-experiment/handler" {
 		if len(node.Children) != 1 {
 			childCount := len(node.Children)
 			childKeys := make([]string, 0, childCount)

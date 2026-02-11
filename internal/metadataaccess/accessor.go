@@ -6,7 +6,7 @@ package metadataaccess
 import (
 	"sync"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 // ServiceEndpoint represents a service endpoint from trace analysis

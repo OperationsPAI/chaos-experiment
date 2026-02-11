@@ -4,13 +4,13 @@
 package grpcoperations
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 
-	hsgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/grpcoperations"
-	mediagrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/media/grpcoperations"
-	obgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/grpcoperations"
-	oteldemogrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/grpcoperations"
-	sngrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/grpcoperations"
+	hsgrpc "github.com/OperationsPAI/chaos-experiment/internal/hs/grpcoperations"
+	mediagrpc "github.com/OperationsPAI/chaos-experiment/internal/media/grpcoperations"
+	obgrpc "github.com/OperationsPAI/chaos-experiment/internal/ob/grpcoperations"
+	oteldemogrpc "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/grpcoperations"
+	sngrpc "github.com/OperationsPAI/chaos-experiment/internal/sn/grpcoperations"
 )
 
 // GRPCOperation represents a gRPC operation from ClickHouse analysis

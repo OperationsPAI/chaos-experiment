@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/chaos"
+	"github.com/OperationsPAI/chaos-experiment/chaos"
 	"github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"github.com/k0kubun/pp/v3"
 	"github.com/sirupsen/logrus"
@@ -29,7 +29,7 @@ func CreateNetworkChaos(cli client.Client, ctx context.Context, namespace string
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := networkChaos.ValidateCreate(ctx, networkChaos)
+	create, err := networkChaos.ValidateCreate()
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -236,7 +236,7 @@ func ScheduleNetworkChaos(cli client.Client, namespace string, appList []string,
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate(context.Background(), workflowChaos)
+	create, err := workflowChaos.ValidateCreate()
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return
