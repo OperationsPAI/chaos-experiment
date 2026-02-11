@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	chaos "github.com/OperationsPAI/chaos-experiment/chaos"
 	"github.com/OperationsPAI/chaos-experiment/client"
 	controllers "github.com/OperationsPAI/chaos-experiment/controllers"
@@ -43,6 +45,5 @@ func main() {
 	}
 	controllers.AddHTTPChaosWorkflowNodes(workflowSpec, namespace, appList, "response-replace", injectTime, sleepTime, opts2...)
 	// create workflow
-	controllers.CreateWorkflow(k8sClient, workflowSpec, namespace)
-
+	controllers.CreateWorkflow(k8sClient, context.Background(), workflowSpec, namespace)
 }

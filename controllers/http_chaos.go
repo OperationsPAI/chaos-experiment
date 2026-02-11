@@ -29,7 +29,7 @@ func CreateHTTPChaos(cli client.Client, ctx context.Context, namespace string, a
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := httpChaos.ValidateCreate()
+	create, err := httpChaos.ValidateCreate(ctx, httpChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -66,7 +66,7 @@ func AddHTTPChaosWorkflowNodes(workflowSpec *v1alpha1.WorkflowSpec, namespace st
 	return workflowSpec
 }
 
-func ScheduleHTTPChaos(cli client.Client, namespace string, appList []string, stressType string, opts ...chaos.OptHTTPChaos) {
+func ScheduleHTTPChaos(cli client.Client, ctx context.Context, namespace string, appList []string, stressType string, opts ...chaos.OptHTTPChaos) {
 	workflowName := strings.ToLower(fmt.Sprintf("%s-%s-%s", namespace, stressType, rand.String(6)))
 	workflowSpec := v1alpha1.WorkflowSpec{
 		Entry: workflowName,
@@ -116,7 +116,7 @@ func ScheduleHTTPChaos(cli client.Client, namespace string, appList []string, st
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(ctx, workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}
@@ -127,9 +127,7 @@ func ScheduleHTTPChaos(cli client.Client, namespace string, appList []string, st
 	}
 }
 
-func ScheduleSetsOfHTTPChaos(cli client.Client, namespace string) {
-	ctx := context.Background()
-
+func ScheduleSetsOfHTTPChaos(cli client.Client, ctx context.Context, namespace string) {
 	podList := &corev1.PodList{}
 
 	listOptions := &client.ListOptions{
@@ -209,7 +207,7 @@ func ScheduleSetsOfHTTPChaos(cli client.Client, namespace string) {
 		logrus.Errorf("Failed to create chaos: %v", err)
 	}
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(ctx, workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}

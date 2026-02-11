@@ -29,7 +29,7 @@ func CreateDnsChaos(cli client.Client, ctx context.Context, namespace string, ap
 		logrus.Errorf("Failed to create DNS chaos: %v", err)
 		return "", err
 	}
-	create, err := dnsChaos.ValidateCreate()
+	create, err := dnsChaos.ValidateCreate(ctx, dnsChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create DNS chaos: %v", err)
 		return "", err
@@ -67,7 +67,7 @@ func AddDnsChaosWorkflowNodes(workflowSpec *v1alpha1.WorkflowSpec, namespace str
 }
 
 // ScheduleDnsChaos schedules a sequence of DNS chaos experiments for multiple apps
-func ScheduleDnsChaos(cli client.Client, namespace string, appList []string, action v1alpha1.DNSChaosAction, patterns []string) {
+func ScheduleDnsChaos(cli client.Client, ctx context.Context, namespace string, appList []string, action v1alpha1.DNSChaosAction, patterns []string) {
 	workflowName := strings.ToLower(fmt.Sprintf("%s-%s-%s", namespace, action, rand.String(6)))
 	workflowSpec := v1alpha1.WorkflowSpec{
 		Entry: workflowName,
@@ -115,7 +115,7 @@ func ScheduleDnsChaos(cli client.Client, namespace string, appList []string, act
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(ctx, workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return

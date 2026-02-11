@@ -28,7 +28,7 @@ func CreatePodChaos(cli client.Client, ctx context.Context, namespace string, ap
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := podChaos.ValidateCreate()
+	create, err := podChaos.ValidateCreate(ctx, podChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -57,7 +57,7 @@ func CreatePodChaosWithContainer(cli client.Client, ctx context.Context, namespa
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := podChaos.ValidateCreate()
+	create, err := podChaos.ValidateCreate(ctx, podChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -95,7 +95,7 @@ func AddPodChaosWorkflowNodes(workflowSpec *v1alpha1.WorkflowSpec, namespace str
 	return workflowSpec
 }
 
-func SchedulePodChaos(cli client.Client, namespace string, appList []string, action v1alpha1.PodChaosAction) {
+func SchedulePodChaos(cli client.Client, ctx context.Context, namespace string, appList []string, action v1alpha1.PodChaosAction) {
 	workflowName := strings.ToLower(fmt.Sprintf("%s-%s-%s", namespace, action, rand.String(6)))
 	workflowSpec := v1alpha1.WorkflowSpec{
 		Entry: workflowName,
@@ -141,7 +141,7 @@ func SchedulePodChaos(cli client.Client, namespace string, appList []string, act
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(ctx, workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}

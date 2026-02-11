@@ -4,7 +4,7 @@ go 1.24.11
 
 require (
 	github.com/ClickHouse/clickhouse-go/v2 v2.34.0
-	github.com/chaos-mesh/chaos-mesh/api v0.0.0-20240821051457-da69c6d9617a
+	github.com/chaos-mesh/chaos-mesh/api v0.0.0-20260203121111-e0d4747d7971
 	github.com/k0kubun/pp v3.0.1+incompatible
 	github.com/k0kubun/pp/v3 v3.2.0
 	github.com/sirupsen/logrus v1.9.3

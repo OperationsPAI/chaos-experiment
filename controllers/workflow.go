@@ -44,7 +44,7 @@ func NewWorkflowSpec(namespace string) *v1alpha1.WorkflowSpec {
 	}
 }
 
-func CreateWorkflow(cli client.Client, workflowSpec *v1alpha1.WorkflowSpec, namespace string) {
+func CreateWorkflow(cli client.Client, ctx context.Context, workflowSpec *v1alpha1.WorkflowSpec, namespace string) {
 	for i, template := range workflowSpec.Templates {
 		if i == 0 {
 			continue
@@ -61,7 +61,7 @@ func CreateWorkflow(cli client.Client, workflowSpec *v1alpha1.WorkflowSpec, name
 		logrus.Errorf("Failed to create chaos: %v", err)
 	}
 
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(ctx, workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}

@@ -27,7 +27,7 @@ func CreateJVMChaos(cli client.Client, ctx context.Context, namespace string, ap
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := jvmChaos.ValidateCreate()
+	create, err := jvmChaos.ValidateCreate(ctx, jvmChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -64,7 +64,7 @@ func AddJVMChaosWorkflowNodes(workflowSpec *v1alpha1.WorkflowSpec, namespace str
 	return workflowSpec
 }
 
-func ScheduleJVMChaos(cli client.Client, namespace string, appList []string, action v1alpha1.JVMChaosAction, opts ...chaos.OptJVMChaos) {
+func ScheduleJVMChaos(cli client.Client, ctx context.Context, namespace string, appList []string, action v1alpha1.JVMChaosAction, opts ...chaos.OptJVMChaos) {
 	workflowName := strings.ToLower(fmt.Sprintf("%s-%s-%s", namespace, action, rand.String(6)))
 	workflowSpec := v1alpha1.WorkflowSpec{
 		Entry: workflowName,
@@ -109,7 +109,7 @@ func ScheduleJVMChaos(cli client.Client, namespace string, appList []string, act
 		return
 	}
 
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(ctx, workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return

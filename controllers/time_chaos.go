@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func CreateTimeChaos(cli client.Client, namespace string, appName string, timeOffset string, duration *string) (string, error) {
+func CreateTimeChaos(cli client.Client, ctx context.Context, namespace string, appName string, timeOffset string, duration *string) (string, error) {
 	spec := chaos.GenerateTimeChaosSpec(namespace, appName, duration, timeOffset)
 	name := strings.ToLower(fmt.Sprintf("%s-%s-time-%s", namespace, appName, rand.String(6)))
 	timeChaos, err := chaos.NewTimeChaos(chaos.WithName(name), chaos.WithNamespace(namespace), chaos.WithTimeChaosSpec(spec))
@@ -21,7 +21,7 @@ func CreateTimeChaos(cli client.Client, namespace string, appName string, timeOf
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := timeChaos.ValidateCreate()
+	create, err := timeChaos.ValidateCreate(ctx, timeChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -50,7 +50,7 @@ func CreateTimeChaosWithContainer(cli client.Client, ctx context.Context, namesp
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := timeChaos.ValidateCreate()
+	create, err := timeChaos.ValidateCreate(ctx, timeChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -87,7 +87,7 @@ func AddTimeChaosWorkflowNodes(workflowSpec *v1alpha1.WorkflowSpec, namespace st
 	return workflowSpec
 }
 
-func ScheduleTimeChaos(cli client.Client, namespace string, appList []string, timeOffset string) {
+func ScheduleTimeChaos(cli client.Client, ctx context.Context, namespace string, appList []string, timeOffset string) {
 	workflowName := strings.ToLower(fmt.Sprintf("%s-time-%s", namespace, rand.String(6)))
 	workflowSpec := v1alpha1.WorkflowSpec{
 		Entry: workflowName,
@@ -131,7 +131,7 @@ func ScheduleTimeChaos(cli client.Client, namespace string, appList []string, ti
 		logrus.Errorf("Failed to create chaos workflow: %v", err)
 	}
 
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(ctx, workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}

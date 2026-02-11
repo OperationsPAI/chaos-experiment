@@ -23,7 +23,7 @@ func CreateIOChaos(cli client.Client, ctx context.Context, namespace string, app
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return ""
 	}
-	create, err := ioChaos.ValidateCreate()
+	create, err := ioChaos.ValidateCreate(ctx, ioChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return ""
@@ -88,7 +88,7 @@ func AddIOChaosWorkflowNodes(workflowSpec *v1alpha1.WorkflowSpec, namespace stri
 }
 
 // ScheduleIOChaos schedules IO chaos experiments for a list of applications
-func ScheduleIOChaos(cli client.Client, namespace string, appList []string, volumePath string, chaosType string, opts ...chaos.OptIOChaos) {
+func ScheduleIOChaos(cli client.Client, ctx context.Context, namespace string, appList []string, volumePath string, chaosType string, opts ...chaos.OptIOChaos) {
 	workflowName := strings.ToLower(fmt.Sprintf("%s-%s-%s", namespace, chaosType, rand.String(6)))
 	workflowSpec := v1alpha1.WorkflowSpec{
 		Entry: workflowName,
@@ -134,7 +134,7 @@ func ScheduleIOChaos(cli client.Client, namespace string, appList []string, volu
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(ctx, workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return
@@ -147,28 +147,28 @@ func ScheduleIOChaos(cli client.Client, namespace string, appList []string, volu
 }
 
 // ScheduleIODelayExperiments schedules IO delay experiments
-func ScheduleIODelayExperiments(cli client.Client, namespace string, appList []string, volumePath string, path string, delay string) {
+func ScheduleIODelayExperiments(cli client.Client, ctx context.Context, namespace string, appList []string, volumePath string, path string, delay string) {
 	opts := []chaos.OptIOChaos{
 		chaos.WithIODelayAction(delay),
 		chaos.WithIOPath(path),
 	}
-	ScheduleIOChaos(cli, namespace, appList, volumePath, "io-delay", opts...)
+	ScheduleIOChaos(cli, ctx, namespace, appList, volumePath, "io-delay", opts...)
 }
 
 // ScheduleIOErrorExperiments schedules IO error experiments
-func ScheduleIOErrorExperiments(cli client.Client, namespace string, appList []string, volumePath string, path string, errno uint32) {
+func ScheduleIOErrorExperiments(cli client.Client, ctx context.Context, namespace string, appList []string, volumePath string, path string, errno uint32) {
 	opts := []chaos.OptIOChaos{
 		chaos.WithIOErrorAction(errno),
 		chaos.WithIOPath(path),
 	}
-	ScheduleIOChaos(cli, namespace, appList, volumePath, "io-error", opts...)
+	ScheduleIOChaos(cli, ctx, namespace, appList, volumePath, "io-error", opts...)
 }
 
 // ScheduleIOMistakeExperiments schedules IO mistake experiments
-func ScheduleIOMistakeExperiments(cli client.Client, namespace string, appList []string, volumePath string, path string, filling v1alpha1.FillingType, maxOccurrences int64, maxLength int64) {
+func ScheduleIOMistakeExperiments(cli client.Client, ctx context.Context, namespace string, appList []string, volumePath string, path string, filling v1alpha1.FillingType, maxOccurrences int64, maxLength int64) {
 	opts := []chaos.OptIOChaos{
 		chaos.WithIOMistakeAction(filling, maxOccurrences, maxLength),
 		chaos.WithIOPath(path),
 	}
-	ScheduleIOChaos(cli, namespace, appList, volumePath, "io-mistake", opts...)
+	ScheduleIOChaos(cli, ctx, namespace, appList, volumePath, "io-mistake", opts...)
 }

@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func CreateStressChaos(cli client.Client, namespace string, appName string, stressors v1alpha1.Stressors, stressType string, duration *string) (string, error) {
+func CreateStressChaos(cli client.Client, ctx context.Context, namespace string, appName string, stressors v1alpha1.Stressors, stressType string, duration *string) (string, error) {
 	spec := chaos.GenerateStressChaosSpec(namespace, appName, duration, stressors)
 	name := strings.ToLower(fmt.Sprintf("%s-%s-%s-%s", namespace, appName, stressType, rand.String(6)))
 	stressChaos, err := chaos.NewStressChaos(chaos.WithName(name), chaos.WithNamespace(namespace), chaos.WithStressChaosSpec(spec))
@@ -22,7 +22,7 @@ func CreateStressChaos(cli client.Client, namespace string, appName string, stre
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := stressChaos.ValidateCreate()
+	create, err := stressChaos.ValidateCreate(ctx, stressChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -51,7 +51,7 @@ func CreateStressChaosWithContainer(cli client.Client, ctx context.Context, name
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := stressChaos.ValidateCreate()
+	create, err := stressChaos.ValidateCreate(ctx, stressChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -107,7 +107,7 @@ func AddStressChaosWorkflowNodes(workflowSpec *v1alpha1.WorkflowSpec, namespace 
 	return workflowSpec
 }
 
-func ScheduleStressChaos(cli client.Client, namespace string, appList []string, stressors v1alpha1.Stressors, stressType string) {
+func ScheduleStressChaos(cli client.Client, ctx context.Context, namespace string, appList []string, stressors v1alpha1.Stressors, stressType string) {
 	workflowName := strings.ToLower(fmt.Sprintf("%s-%s-%s", namespace, stressType, rand.String(6)))
 	workflowSpec := v1alpha1.WorkflowSpec{
 		Entry: workflowName,
@@ -157,7 +157,7 @@ func ScheduleStressChaos(cli client.Client, namespace string, appList []string, 
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(ctx, workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}
