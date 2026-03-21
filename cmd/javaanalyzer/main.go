@@ -28,11 +28,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Validate services path
+	// Set default services path when not provided
 	if *servicesPath == "" {
-		fmt.Println("Error: services path is required")
-		flag.Usage()
-		os.Exit(1)
+		if systemType == systemconfig.SystemTrainTicket {
+			*servicesPath = filepath.Clean("../train-ticket")
+			fmt.Printf("Services path not provided, using default TrainTicket path: %s\n", *servicesPath)
+		} else {
+			fmt.Println("Error: services path is required for otel-demo")
+			flag.Usage()
+			os.Exit(1)
+		}
 	}
 
 	// Set default output path based on system type

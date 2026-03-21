@@ -14,6 +14,7 @@ const (
 	keySystem      = "System"
 	keyApp         = "AppIdx"
 	keyMethod      = "MethodIdx"
+	keyTarget      = "MutatorTargetIdx"
 	keyEndpoint    = "EndpointIdx"
 	keyNetworkPair = "NetworkPairIdx"
 	keyContainer   = "ContainerIdx"

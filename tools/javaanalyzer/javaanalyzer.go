@@ -10,8 +10,47 @@ import (
 
 // ClassMethodEntry represents a class-method pair from the Java analysis
 type ClassMethodEntry struct {
-	ClassName  string `json:"className"`
-	MethodName string `json:"methodName"`
+	AppName    string         `json:"app,omitempty"`
+	ClassName  string         `json:"className"`
+	MethodName string         `json:"methodName"`
+	Mutations  []MutationSpec `json:"mutations,omitempty"`
+}
+
+// UnmarshalJSON supports both legacy extractor keys (className/methodName)
+// and new keys (class/method) that include mutation details.
+func (e *ClassMethodEntry) UnmarshalJSON(data []byte) error {
+	type rawEntry struct {
+		AppName          string         `json:"app"`
+		AppNameLegacy    string         `json:"appName"`
+		ClassName        string         `json:"className"`
+		ClassNameLegacy  string         `json:"class"`
+		MethodName       string         `json:"methodName"`
+		MethodNameLegacy string         `json:"method"`
+		Mutations        []MutationSpec `json:"mutations"`
+	}
+
+	var raw rawEntry
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	e.AppName = raw.AppName
+	if e.AppName == "" {
+		e.AppName = raw.AppNameLegacy
+	}
+
+	e.ClassName = raw.ClassName
+	if e.ClassName == "" {
+		e.ClassName = raw.ClassNameLegacy
+	}
+
+	e.MethodName = raw.MethodName
+	if e.MethodName == "" {
+		e.MethodName = raw.MethodNameLegacy
+	}
+
+	e.Mutations = raw.Mutations
+	return nil
 }
 
 // PathResult represents the results for a specific path

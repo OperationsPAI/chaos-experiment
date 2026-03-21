@@ -454,6 +454,15 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 
 			start = defaultStartIndex
 			end = len(methods) - 1
+		case keyTarget:
+			// For flattened runtime mutator targets
+			targets, err := systemCache.GetAllJVMRuntimeMutatorTargets()
+			if err != nil {
+				return 0, 0, fmt.Errorf("failed to get JVM runtime mutator targets: %w", err)
+			}
+
+			start = defaultStartIndex
+			end = len(targets) - 1
 		case keyEndpoint:
 			// For flattened HTTP endpoints
 			endpoints, err := systemCache.GetAllHTTPEndpoints()

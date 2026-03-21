@@ -9,6 +9,7 @@ import (
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/databaseoperations"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/grpcoperations"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/javaclassmethods"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/javamutatorconfig"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/networkdependencies"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
@@ -20,6 +21,19 @@ type AppMethodPair struct {
 	AppName    string `json:"app_name"`
 	ClassName  string `json:"class_name"`
 	MethodName string `json:"method_name"`
+}
+
+// AppRuntimeMutatorTarget represents a flattened valid runtime mutator target.
+type AppRuntimeMutatorTarget struct {
+	AppName          string `json:"app_name"`
+	ClassName        string `json:"class_name"`
+	MethodName       string `json:"method_name"`
+	MutationType     int    `json:"mutation_type"`
+	MutationTypeName string `json:"mutation_type_name"`
+	MutationFrom     string `json:"mutation_from,omitempty"`
+	MutationTo       string `json:"mutation_to,omitempty"`
+	MutationStrategy string `json:"mutation_strategy,omitempty"`
+	Description      string `json:"description,omitempty"`
 }
 
 // AppEndpointPair represents a flattened app+endpoint combination
@@ -62,14 +76,15 @@ type ContainerInfo struct {
 }
 
 type systemCache struct {
-	system        systemconfig.SystemType
-	appLabels     map[string][]string
-	appMethods    []AppMethodPair
-	appEndpoints  []AppEndpointPair
-	networkPairs  []AppNetworkPair
-	dnsEndpoints  []AppDNSPair
-	containerInfo map[string][]ContainerInfo
-	dbOperations  []AppDatabasePair
+	system                systemconfig.SystemType
+	appLabels             map[string][]string
+	appMethods            []AppMethodPair
+	runtimeMutatorTargets []AppRuntimeMutatorTarget
+	appEndpoints          []AppEndpointPair
+	networkPairs          []AppNetworkPair
+	dnsEndpoints          []AppDNSPair
+	containerInfo         map[string][]ContainerInfo
+	dbOperations          []AppDatabasePair
 }
 
 func GetSystemCache(system systemconfig.SystemType) *systemCache {
@@ -79,14 +94,15 @@ func GetSystemCache(system systemconfig.SystemType) *systemCache {
 // newSystemCache creates a new systemCache instance
 func newSystemCache(system systemconfig.SystemType) *systemCache {
 	return &systemCache{
-		system:        system,
-		appLabels:     make(map[string][]string),
-		appMethods:    []AppMethodPair{},
-		appEndpoints:  []AppEndpointPair{},
-		networkPairs:  []AppNetworkPair{},
-		dnsEndpoints:  []AppDNSPair{},
-		dbOperations:  []AppDatabasePair{},
-		containerInfo: make(map[string][]ContainerInfo),
+		system:                system,
+		appLabels:             make(map[string][]string),
+		appMethods:            []AppMethodPair{},
+		runtimeMutatorTargets: []AppRuntimeMutatorTarget{},
+		appEndpoints:          []AppEndpointPair{},
+		networkPairs:          []AppNetworkPair{},
+		dnsEndpoints:          []AppDNSPair{},
+		dbOperations:          []AppDatabasePair{},
+		containerInfo:         make(map[string][]ContainerInfo),
 	}
 }
 
@@ -184,6 +200,57 @@ func (s *systemCache) GetAllJVMMethods() ([]AppMethodPair, error) {
 		return result[i].MethodName < result[j].MethodName
 	})
 
+	s.appMethods = result
+
+	return result, nil
+}
+
+// GetAllJVMRuntimeMutatorTargets returns all valid runtime mutator targets sorted by app name.
+func (s *systemCache) GetAllJVMRuntimeMutatorTargets() ([]AppRuntimeMutatorTarget, error) {
+	if len(s.runtimeMutatorTargets) > 0 {
+		return s.runtimeMutatorTargets, nil
+	}
+
+	injections := javamutatorconfig.ListAllValidInjections()
+	result := make([]AppRuntimeMutatorTarget, 0, len(injections))
+
+	for _, injection := range injections {
+		result = append(result, AppRuntimeMutatorTarget{
+			AppName:          injection.AppName,
+			ClassName:        injection.ClassName,
+			MethodName:       injection.MethodName,
+			MutationType:     injection.Mutation.Type,
+			MutationTypeName: injection.Mutation.TypeName,
+			MutationFrom:     injection.Mutation.From,
+			MutationTo:       injection.Mutation.To,
+			MutationStrategy: injection.Mutation.Strategy,
+			Description:      injection.Mutation.Description,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].AppName != result[j].AppName {
+			return result[i].AppName < result[j].AppName
+		}
+		if result[i].ClassName != result[j].ClassName {
+			return result[i].ClassName < result[j].ClassName
+		}
+		if result[i].MethodName != result[j].MethodName {
+			return result[i].MethodName < result[j].MethodName
+		}
+		if result[i].MutationType != result[j].MutationType {
+			return result[i].MutationType < result[j].MutationType
+		}
+		if result[i].MutationStrategy != result[j].MutationStrategy {
+			return result[i].MutationStrategy < result[j].MutationStrategy
+		}
+		if result[i].MutationFrom != result[j].MutationFrom {
+			return result[i].MutationFrom < result[j].MutationFrom
+		}
+		return result[i].MutationTo < result[j].MutationTo
+	})
+
+	s.runtimeMutatorTargets = result
 	return result, nil
 }
 

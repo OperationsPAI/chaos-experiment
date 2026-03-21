@@ -503,6 +503,13 @@ func parseInjection(ctx context.Context, instance Injection) (map[string]any, er
 				}
 
 				value = methods[index]
+			case keyTarget:
+				targets, err := systemCache.GetAllJVMRuntimeMutatorTargets()
+				if err != nil {
+					return nil, err
+				}
+
+				value = targets[index]
 			case keyEndpoint:
 				endpoints, err := systemCache.GetAllHTTPEndpoints()
 				if err != nil {
@@ -817,6 +824,7 @@ type ChaosResourceMapping struct {
 var keyResourceMap = map[string]string{
 	keyApp:         "app_labels",
 	keyMethod:      "jvm_app_names",
+	keyTarget:      "jvm_app_names",
 	keyEndpoint:    "http_app_names",
 	keyNetworkPair: "network_pairs",
 	keyDNSEndpoint: "dns_app_names",

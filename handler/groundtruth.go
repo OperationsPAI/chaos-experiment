@@ -265,6 +265,43 @@ func GetGroundtruthFromMethodIdx(ctx context.Context, system systemconfig.System
 	return gt, nil
 }
 
+// GetGroundtruthFromRuntimeMutatorTargetIdx returns a Groundtruth object for a given runtime mutator target index
+func GetGroundtruthFromRuntimeMutatorTargetIdx(ctx context.Context, system systemconfig.SystemType, namespace string, targetIdx int) (Groundtruth, error) {
+	systemCache := resourcelookup.GetSystemCache(system)
+
+	targets, err := systemCache.GetAllJVMRuntimeMutatorTargets()
+	if err != nil {
+		return Groundtruth{}, fmt.Errorf("failed to get JVM runtime mutator targets: %w", err)
+	}
+
+	if targetIdx < 0 || targetIdx >= len(targets) {
+		return Groundtruth{}, fmt.Errorf("runtime mutator target index out of range: %d (max: %d)", targetIdx, len(targets)-1)
+	}
+
+	target := targets[targetIdx]
+	appName := target.AppName
+	functionName := fmt.Sprintf("%s.%s", target.ClassName, target.MethodName)
+
+	containers, err := systemCache.GetContainersByService(ctx, namespace, appName)
+	if err != nil {
+		return Groundtruth{}, fmt.Errorf("failed to get containers: %w", err)
+	}
+
+	pods, err := systemCache.GetPodsByService(ctx, namespace, appName)
+	if err != nil {
+		return Groundtruth{}, fmt.Errorf("failed to get pods: %w", err)
+	}
+
+	gt := Groundtruth{
+		Service:   []string{appName},
+		Pod:       pods,
+		Container: containers,
+		Function:  []string{functionName},
+	}
+
+	return gt, nil
+}
+
 // GetGroundtruthFromDatabaseIdx returns a Groundtruth object for a given database operation index
 func GetGroundtruthFromDatabaseIdx(ctx context.Context, system systemconfig.SystemType, namespace string, dbOpIdx int) (Groundtruth, error) {
 	systemCache := resourcelookup.GetSystemCache(system)
@@ -660,5 +697,5 @@ func (s *JVMRuntimeMutatorSpec) GetGroundtruth(ctx context.Context) (Groundtruth
 	if err != nil {
 		return Groundtruth{}, err
 	}
-	return GetGroundtruthFromMethodIdx(ctx, system, namespace, s.MethodIdx)
+	return GetGroundtruthFromRuntimeMutatorTargetIdx(ctx, system, namespace, s.MutatorTargetIdx)
 }
