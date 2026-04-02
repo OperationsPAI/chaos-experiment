@@ -29,7 +29,7 @@ func CreateHTTPChaos(cli client.Client, ctx context.Context, namespace string, a
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := httpChaos.ValidateCreate()
+	create, err := httpChaos.ValidateCreate(ctx, nil)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -116,7 +116,7 @@ func ScheduleHTTPChaos(cli client.Client, namespace string, appList []string, st
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(context.Background(), nil)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}
@@ -209,7 +209,7 @@ func ScheduleSetsOfHTTPChaos(cli client.Client, namespace string) {
 		logrus.Errorf("Failed to create chaos: %v", err)
 	}
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(context.Background(), nil)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}

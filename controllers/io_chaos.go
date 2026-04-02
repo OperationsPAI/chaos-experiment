@@ -23,7 +23,7 @@ func CreateIOChaos(cli client.Client, ctx context.Context, namespace string, app
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return ""
 	}
-	create, err := ioChaos.ValidateCreate()
+	create, err := ioChaos.ValidateCreate(ctx, nil)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return ""
@@ -134,7 +134,7 @@ func ScheduleIOChaos(cli client.Client, namespace string, appList []string, volu
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(context.Background(), nil)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return

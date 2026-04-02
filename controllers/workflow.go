@@ -57,11 +57,7 @@ func CreateWorkflow(cli client.Client, workflowSpec *v1alpha1.WorkflowSpec, name
 		logrus.Errorf("Failed to create chaos workflow: %v", err)
 	}
 
-	if err != nil {
-		logrus.Errorf("Failed to create chaos: %v", err)
-	}
-
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(context.Background(), nil)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}

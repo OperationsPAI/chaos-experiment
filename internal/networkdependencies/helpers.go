@@ -2,6 +2,7 @@ package networkdependencies
 
 import (
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
 )
 
 // ServiceDependency represents a dependency between services
@@ -97,8 +98,26 @@ func GetAllServicePairs() []ServiceDependency {
 	return GetAllServicePairsFunc()
 }
 
-// getAllServicePairsImpl is the actual implementation of GetAllServicePairs
+// getAllServicePairsImpl is the actual implementation of GetAllServicePairs.
+// It first checks the MetadataStore (if set); on success it returns the
+// dynamic data. Otherwise it falls back to the static dependency graph.
 func getAllServicePairsImpl() []ServiceDependency {
+	if store := systemconfig.GetMetadataStore(); store != nil {
+		system := string(systemconfig.GetCurrentSystem())
+		data, err := store.GetNetworkPairs(system)
+		if err == nil && len(data) > 0 {
+			pairs := make([]ServiceDependency, 0, len(data))
+			for _, d := range data {
+				pairs = append(pairs, ServiceDependency{
+					SourceService:     d.Source,
+					TargetService:     d.Target,
+					ConnectionDetails: "HTTP/gRPC Communication",
+				})
+			}
+			return pairs
+		}
+	}
+
 	var pairs []ServiceDependency
 
 	for source, targets := range dependencyGraph {

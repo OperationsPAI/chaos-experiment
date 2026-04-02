@@ -29,7 +29,7 @@ func CreateNetworkChaos(cli client.Client, ctx context.Context, namespace string
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := networkChaos.ValidateCreate()
+	create, err := networkChaos.ValidateCreate(ctx, nil)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -236,7 +236,7 @@ func ScheduleNetworkChaos(cli client.Client, namespace string, appList []string,
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(context.Background(), nil)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return

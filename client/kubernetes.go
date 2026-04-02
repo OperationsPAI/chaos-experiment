@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -24,7 +25,16 @@ import (
 var (
 	k8sClientInstance client.Client
 	once              sync.Once
+	externalConfig    atomic.Pointer[rest.Config]
 )
+
+// InitWithConfig sets the Kubernetes REST config to use for client initialization.
+// Must be called before any function that triggers NewK8sClient; has no effect
+// if the client was already initialized.
+func InitWithConfig(cfg *rest.Config) {
+	externalConfig.Store(cfg)
+	_ = NewK8sClient()
+}
 
 // GetK8sConfig returns Kubernetes configuration
 func GetK8sConfig() *rest.Config {
@@ -39,7 +49,10 @@ func GetK8sConfig() *rest.Config {
 // NewK8sClient initializes a new Kubernetes client using singleton pattern
 func NewK8sClient() client.Client {
 	once.Do(func() {
-		cfg := GetK8sConfig()
+		cfg := externalConfig.Load()
+		if cfg == nil {
+			cfg = GetK8sConfig()
+		}
 		scheme := runtime.NewScheme()
 
 		// Register Chaos Mesh CRD scheme

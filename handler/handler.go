@@ -9,10 +9,28 @@ import (
 
 	"github.com/LGU-SE-Internal/chaos-experiment/client"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
 	"github.com/LGU-SE-Internal/chaos-experiment/utils"
 	"github.com/k0kubun/pp/v3"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// SystemType wraps systemconfig.SystemType for public use.
+type SystemType = systemconfig.SystemType
+
+const (
+	SystemTrainTicket        = systemconfig.SystemTrainTicket
+	SystemOtelDemo           = systemconfig.SystemOtelDemo
+	SystemMediaMicroservices = systemconfig.SystemMediaMicroservices
+	SystemHotelReservation   = systemconfig.SystemHotelReservation
+	SystemSocialNetwork      = systemconfig.SystemSocialNetwork
+	SystemOnlineBoutique     = systemconfig.SystemOnlineBoutique
+)
+
+// GetAllSystemTypes returns all registered system types.
+func GetAllSystemTypes() []SystemType {
+	return systemconfig.GetAllRegisteredSystems()
+}
 
 type ChaosType int
 
