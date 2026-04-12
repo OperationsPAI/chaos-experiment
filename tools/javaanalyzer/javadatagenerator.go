@@ -307,17 +307,21 @@ func GenerateMutatorConfigFile(services []ServiceClassMethods, outputFilePath st
 	for _, service := range services {
 		entries := make([]MethodMutationEntry, 0, len(service.Methods))
 		for _, method := range service.Methods {
-			mutations := method.Mutations
-			if len(mutations) == 0 {
-				// Backward compatibility for legacy extractor output without mutation details.
-				mutations = getDefaultMutations()
+			// Keep only methods with real mutation data from extractor.
+			if len(method.Mutations) == 0 {
+				continue
 			}
 
 			entries = append(entries, MethodMutationEntry{
 				ClassName:  method.ClassName,
 				MethodName: method.MethodName,
-				Mutations:  mutations,
+				Mutations:  method.Mutations,
 			})
+		}
+
+		// Skip services that have no methods with real mutations.
+		if len(entries) == 0 {
+			continue
 		}
 
 		mutatorServices = append(mutatorServices, ServiceMutatorConfig{
@@ -358,37 +362,4 @@ func GenerateMutatorConfigFile(services []ServiceClassMethods, outputFilePath st
 	}
 
 	return nil
-}
-
-func getDefaultMutations() []MutationSpec {
-	mutations := make([]MutationSpec, 0, 21)
-
-	constantPairs := [][2]string{
-		{"true", "false"},
-		{"false", "true"},
-		{"0", "1"},
-		{"1", "0"},
-		{"100", "0"},
-		{"\"success\"", "\"failure\""},
-		{"\"ok\"", "\"error\""},
-		{"-1", "0"},
-		{"0", "-1"},
-		{"1000", "1"},
-		{"60", "1"},
-	}
-	for _, pair := range constantPairs {
-		mutations = append(mutations, MutationSpec{Type: 0, TypeName: "constant", From: pair[0], To: pair[1]})
-	}
-
-	operatorStrategies := []string{"add_to_sub", "sub_to_add", "mul_to_div", "div_to_mul"}
-	for _, strategy := range operatorStrategies {
-		mutations = append(mutations, MutationSpec{Type: 1, TypeName: "operator", Strategy: strategy})
-	}
-
-	stringStrategies := []string{"empty", "null", "reverse", "uppercase", "lowercase", "random"}
-	for _, strategy := range stringStrategies {
-		mutations = append(mutations, MutationSpec{Type: 2, TypeName: "string", Strategy: strategy})
-	}
-
-	return mutations
 }
