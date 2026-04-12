@@ -22,6 +22,7 @@ type ClickHouseConfig struct {
 }
 
 // ServiceEndpoint represents a service endpoint with its details
+// This is used internally by the analyzer tool
 type ServiceEndpoint struct {
 	ServiceName    string
 	RequestMethod  string
@@ -29,8 +30,35 @@ type ServiceEndpoint struct {
 	Route          string
 	ServerAddress  string
 	ServerPort     string
-	SpanKind       string // Add SpanKind to track if it's Server or Client
-	SpanName       string // Span name for groundtruth generation
+	SpanKind       string
+	SpanName       string
+}
+
+// DatabaseOperation represents a database operation with its details
+// This is used internally by the analyzer tool
+type DatabaseOperation struct {
+	ServiceName   string
+	DBName        string
+	DBTable       string
+	Operation     string
+	DBSystem      string
+	ServerAddress string
+	ServerPort    string
+	SpanName      string
+}
+
+// GRPCOperation represents a gRPC operation with its details
+// This is used internally by the analyzer tool
+type GRPCOperation struct {
+	ServiceName   string
+	RPCSystem     string
+	RPCService    string
+	RPCMethod     string
+	StatusCode    string
+	ServerAddress string
+	ServerPort    string
+	SpanKind      string
+	SpanName      string
 }
 
 // TrainTicket span name pattern replacements for ts-ui-dashboard and loadgenerator services
@@ -79,6 +107,14 @@ var tsSpanNamePatterns = []struct {
 		regexp.MustCompile(`(.*?)GET (.*?)/api/v1/executeservice/execute/execute/[0-9a-f-]+`),
 		"${1}GET ${2}/api/v1/executeservice/execute/execute/{orderId}",
 	},
+	{
+		regexp.MustCompile(`(.*?)DELETE (.*?)/api/v1/adminorderservice/adminorder/[0-9a-f-]+/[A-Z0-9]+`),
+		"${1}DELETE ${2}/api/v1/adminorderservice/adminorder/{orderId}/{trainNumber}",
+	},
+	{
+		regexp.MustCompile(`(.*?)DELETE (.*?)/api/v1/adminrouteservice/adminroute/[0-9a-f-]+`),
+		"${1}DELETE ${2}/api/v1/adminrouteservice/adminroute/{routeId}",
+	},
 }
 
 // NormalizeTrainTicketSpanName applies pattern replacements to normalize
@@ -97,29 +133,6 @@ func NormalizeTrainTicketSpanName(spanName string, serviceName string) string {
 	return spanName
 }
 
-// DatabaseOperation represents a database operation with its details
-type DatabaseOperation struct {
-	ServiceName   string
-	DBName        string
-	DBTable       string
-	Operation     string
-	DBSystem      string
-	ServerAddress string
-	ServerPort    string
-}
-
-// GRPCOperation represents a gRPC operation with its details
-type GRPCOperation struct {
-	ServiceName    string
-	RPCSystem      string
-	RPCService     string
-	RPCMethod      string
-	GRPCStatusCode string
-	ServerAddress  string
-	ServerPort     string
-	SpanKind       string
-}
-
 // Create materialized view SQL statement
 const createMaterializedViewSQL = `
 CREATE MATERIALIZED VIEW IF NOT EXISTS otel_traces_mv
@@ -133,8 +146,6 @@ ORDER BY (
     SpanKind,
     request_method,
     response_status_code,
-    server_address,
-    server_port,
 	db_name,
     db_operation
 )
@@ -180,6 +191,14 @@ SELECT
         WHEN SpanAttributes['http.target'] IS NOT NULL AND SpanAttributes['http.target'] != ''
             THEN
                 CASE
+                    -- New patterns first for priority matching
+                    -- /api/v1/adminorderservice/adminorder/{uuid}/{id}
+                    WHEN match(SpanAttributes['http.target'], '/api/v1/adminorderservice/adminorder/[0-9a-f-]+/[A-Z0-9]+')
+                        THEN '/api/v1/adminorderservice/adminorder/*/*'
+                    -- /api/v1/users/{uuid}
+                    WHEN match(SpanAttributes['http.target'], '^/api/v1/users/[0-9a-f-]+$')
+                        THEN '/api/v1/users/*'
+                    -- Existing patterns
                     WHEN position(SpanAttributes['http.target'], '/api/v1/verifycode/verify/') = 1
                         THEN '/api/v1/verifycode/verify/*'
                     WHEN position(SpanAttributes['http.target'], '/api/v1/cancelservice/cancel/refound/') = 1
@@ -200,6 +219,7 @@ SELECT
                         THEN '/api/v1/executeservice/execute/execute/*'
                     WHEN position(SpanAttributes['http.target'], '/api/v1/userservice/users/id/') = 1
                         THEN '/api/v1/userservice/users/id/*'
+                    -- Generic UUID pattern for remaining cases
                     WHEN match(SpanAttributes['http.target'], '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
                         THEN replaceRegexpAll(SpanAttributes['http.target'], '/([^/]+/[^/]+/[^/]+/)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})', '/\\1*')
                     ELSE SpanAttributes['http.target']
@@ -210,6 +230,17 @@ SELECT
                 CASE
                     WHEN match(SpanAttributes['url.full'], 'https?://[^/]+(/.*)') THEN
                         CASE
+                            -- New patterns first for priority matching
+                            -- /api/v1/adminorderservice/adminorder/{uuid}/{id}
+                            WHEN match(path, '/api/v1/adminorderservice/adminorder/[0-9a-f-]+/[A-Z0-9]+')
+                                THEN replaceRegexpAll(path, '(/api/v1/adminorderservice/adminorder/)[^/]+/[^/]+', '\\1*/*')
+                            -- /api/v1/users/{uuid}
+                            WHEN match(path, '^/api/v1/users/[0-9a-f-]+$')
+                                THEN '/api/v1/users/*'
+                            -- /api/v1/userservice/users/{uuid}
+                            WHEN match(path, '^/api/v1/userservice/users/[0-9a-f-]+$')
+                                THEN '/api/v1/userservice/users/*'
+                            -- Existing patterns
                             WHEN position(path, '/api/v1/assuranceservice/assurances/') = 1
                                 THEN replaceRegexpAll(path, '(/api/v1/assuranceservice/assurances/[^/]+/)[^/]+', '\\1*')
                             WHEN position(path, '/api/v1/consignpriceservice/consignprice/') = 1
@@ -286,20 +317,18 @@ const createOtelDemoMaterializedViewSQL = `
 CREATE MATERIALIZED VIEW IF NOT EXISTS otel_demo_traces_mv
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
-PRIMARY KEY (masked_route, ServiceName, db_name)
+PRIMARY KEY (masked_route, ServiceName, db_name, rpc_service)
 ORDER BY (
     masked_route,
     ServiceName,
     db_name,
+    rpc_service,
     SpanKind,
     request_method,
     response_status_code,
-    server_address,
-    server_port,
     db_operation,
     db_sql_table,
     rpc_system,
-    rpc_service,
     rpc_method,
     grpc_status_code
 )
@@ -444,20 +473,18 @@ func createDeathStarBenchMaterializedViewSQL(namespace string, viewName string) 
 CREATE MATERIALIZED VIEW IF NOT EXISTS %s
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
-PRIMARY KEY (masked_route, ServiceName, db_name)
+PRIMARY KEY (masked_route, ServiceName, db_name, rpc_service)
 ORDER BY (
     masked_route,
     ServiceName,
     db_name,
+    rpc_service,
     SpanKind,
     request_method,
     response_status_code,
-    server_address,
-    server_port,
     db_operation,
     db_sql_table,
     rpc_system,
-    rpc_service,
     rpc_method,
     grpc_status_code
 )
@@ -538,20 +565,18 @@ func createOnlineBoutiqueMaterializedViewSQL(namespace string, viewName string) 
 CREATE MATERIALIZED VIEW IF NOT EXISTS %s
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
-PRIMARY KEY (masked_route, ServiceName, db_name)
+PRIMARY KEY (masked_route, ServiceName, db_name, rpc_service)
 ORDER BY (
     masked_route,
     ServiceName,
     db_name,
+    rpc_service,
     SpanKind,
     request_method,
     response_status_code,
-    server_address,
-    server_port,
     db_operation,
     db_sql_table,
     rpc_system,
-    rpc_service,
     rpc_method,
     grpc_status_code
 )
@@ -618,7 +643,11 @@ FROM otel_traces
 WHERE
     ResourceAttributes['k8s.namespace.name'] = '%s'
     AND SpanKind IN ('Server', 'Client')
-    AND SpanName != 'opentelemetry.proto.collector.trace.v1.TraceService/Export'
+	AND SpanName NOT IN (
+		'opentelemetry.proto.collector.trace.v1.TraceService/Export', 
+		'grpc.health.v1.Health/Check',
+		'grpc.grpc.health.v1.Health/Check'
+	)
     AND mapExists(
         (k, v) -> (k IS NOT NULL AND k != '') AND (v IS NOT NULL AND v != ''),
         SpanAttributes
@@ -626,7 +655,257 @@ WHERE
 `, viewName, namespace)
 }
 
-// Client query
+// createTeaStoreMaterializedViewSQL creates SQL for TeaStore materialized view
+// with specific route normalization for parameter patterns and port numbers
+func createTeaStoreMaterializedViewSQL(namespace string, viewName string) string {
+	return fmt.Sprintf(`
+CREATE MATERIALIZED VIEW IF NOT EXISTS %s 
+ENGINE = ReplacingMergeTree(version)
+PARTITION BY toYYYYMM(Timestamp)
+PRIMARY KEY (masked_route, ServiceName, db_name, rpc_service)
+ORDER BY (
+    masked_route,
+    ServiceName,
+    db_name,
+    rpc_service,
+    SpanKind,
+    request_method,
+    response_status_code,
+    db_operation,
+    db_sql_table,
+    rpc_system,
+    rpc_method,
+    grpc_status_code
+)
+SETTINGS allow_nullable_key = 1
+POPULATE
+AS 
+SELECT 
+    ResourceAttributes['service.name'] AS ServiceName,
+    4294967295 - toUnixTimestamp(Timestamp) AS version,
+    Timestamp,
+    SpanKind,
+    SpanAttributes['client.address'] AS client_address,
+    SpanAttributes['http.request.method'] AS http_request_method,
+    SpanAttributes['http.response.status_code'] AS http_response_status_code,
+    SpanAttributes['http.route'] AS http_route,
+    SpanAttributes['http.method'] AS http_method,
+    SpanAttributes['url.full'] AS url_full,
+    SpanAttributes['http.status_code'] AS http_status_code,
+    SpanAttributes['http.target'] AS http_target,
+    
+    CASE 
+        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != '' 
+            THEN SpanAttributes['http.request.method']
+        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != '' 
+            THEN SpanAttributes['http.method']
+        ELSE ''
+    END AS request_method,
+    
+    CASE 
+        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != '' 
+            THEN SpanAttributes['http.response.status_code']
+        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != '' 
+            THEN SpanAttributes['http.status_code']
+        ELSE ''
+    END AS response_status_code,
+    
+    -- TeaStore-specific path normalization
+    -- 1. Replace {parameter} patterns with /* (e.g., {id:[0-9][0-9]*} -> /*)
+    -- 2. Remove port numbers at the end (e.g., :8080)
+    -- 3. Also replace standard UUIDs and numeric IDs with /*
+    CASE
+        WHEN SpanAttributes['http.route'] IS NOT NULL AND SpanAttributes['http.route'] != ''
+            THEN replaceRegexpAll(
+                replaceRegexpAll(
+                    replaceRegexpAll(SpanAttributes['http.route'], '/\\{[^}]+\\}', '/*'),
+                    ':[0-9]+$',
+                    ''
+                ),
+                '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|/\\d+',
+                '/*'
+            )
+        WHEN SpanAttributes['http.target'] IS NOT NULL AND SpanAttributes['http.target'] != ''
+            THEN replaceRegexpAll(
+                replaceRegexpAll(
+                    replaceRegexpAll(SpanAttributes['http.target'], '/\\{[^}]+\\}', '/*'),
+                    ':[0-9]+$',
+                    ''
+                ),
+                '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|/\\d+',
+                '/*'
+            )
+        WHEN SpanAttributes['url.full'] IS NOT NULL AND SpanAttributes['url.full'] != ''
+            THEN replaceRegexpAll(
+                replaceRegexpAll(
+                    replaceRegexpAll(
+                        replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+(/.*)', '\\1'),
+                        '/\\{[^}]+\\}',
+                        '/*'
+                    ),
+                    ':[0-9]+$',
+                    ''
+                ),
+                '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|/\\d+',
+                '/*'
+            )
+        ELSE ''
+    END AS masked_route,
+    
+    SpanAttributes['server.address'] AS server_address,
+    SpanAttributes['server.port'] AS server_port,
+    SpanAttributes['db.connection_string'] AS db_connection_string,
+    SpanAttributes['db.name'] AS db_name,
+    SpanAttributes['db.operation'] AS db_operation,
+    SpanAttributes['db.sql.table'] AS db_sql_table, 
+    SpanAttributes['db.statement'] AS db_statement,
+    SpanAttributes['db.system'] AS db_system,
+    SpanAttributes['db.user'] AS db_user,
+    SpanAttributes['rpc.system'] AS rpc_system,
+    SpanAttributes['rpc.service'] AS rpc_service,
+    SpanAttributes['rpc.method'] AS rpc_method,
+    SpanAttributes['rpc.grpc.status_code'] AS grpc_status_code,
+    SpanName AS span_name
+FROM otel_traces
+WHERE 
+    ResourceAttributes['k8s.namespace.name'] = '%s'
+    AND SpanKind IN ('Server', 'Client')
+    AND mapExists(
+        (k, v) -> (k IS NOT NULL AND k != '') AND (v IS NOT NULL AND v != ''),
+        SpanAttributes
+    );
+`, viewName, namespace)
+}
+
+// createSockShopMaterializedViewSQL creates SQL for SockShop materialized view
+// with specific route normalization for cart IDs and other alphanumeric identifiers
+func createSockShopMaterializedViewSQL(namespace string, viewName string) string {
+	return fmt.Sprintf(`
+CREATE MATERIALIZED VIEW IF NOT EXISTS %s 
+ENGINE = ReplacingMergeTree(version)
+PARTITION BY toYYYYMM(Timestamp)
+PRIMARY KEY (masked_route, ServiceName, db_name, rpc_service)
+ORDER BY (
+    masked_route,
+    ServiceName,
+    db_name,
+    rpc_service,
+    SpanKind,
+    request_method,
+    response_status_code,
+    db_operation,
+    db_sql_table,
+    rpc_system,
+    rpc_method,
+    grpc_status_code
+)
+SETTINGS allow_nullable_key = 1
+POPULATE
+AS 
+SELECT 
+    ResourceAttributes['service.name'] AS ServiceName,
+    4294967295 - toUnixTimestamp(Timestamp) AS version,
+    Timestamp,
+    SpanKind,
+    SpanAttributes['client.address'] AS client_address,
+    SpanAttributes['http.request.method'] AS http_request_method,
+    SpanAttributes['http.response.status_code'] AS http_response_status_code,
+    SpanAttributes['http.route'] AS http_route,
+    SpanAttributes['http.method'] AS http_method,
+    SpanAttributes['url.full'] AS url_full,
+    SpanAttributes['http.status_code'] AS http_status_code,
+    SpanAttributes['http.target'] AS http_target,
+    
+    CASE 
+        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != '' 
+            THEN SpanAttributes['http.request.method']
+        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != '' 
+            THEN SpanAttributes['http.method']
+        ELSE ''
+    END AS request_method,
+    
+    CASE 
+        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != '' 
+            THEN SpanAttributes['http.response.status_code']
+        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != '' 
+            THEN SpanAttributes['http.status_code']
+        ELSE ''
+    END AS response_status_code,
+    
+    -- SockShop-specific path normalization
+    -- Replace cart IDs and other alphanumeric identifiers with /*
+    -- Examples: /carts/HikmE45Ab8PjRoQk6fMVU-CbQ1U71L4F/items -> /carts/*/items
+    --           /carts/Lh9JIUqE5-oaMk7i0ZjCOoslTunVdCjz -> /carts/*
+    --           /carts/user95/merge -> /carts/*/merge
+    --           /customers/user50/addresses -> /customers/*/addresses
+    -- Also removes query parameters like ?sessionId=...
+    CASE
+        WHEN SpanAttributes['http.route'] IS NOT NULL AND SpanAttributes['http.route'] != ''
+            THEN replaceRegexpAll(
+                replaceRegexpAll(
+                    replaceRegexpOne(SpanAttributes['http.route'], '\\?.*$', ''),
+                    '/user\\d+',
+                    '/*'
+                ),
+                '/[A-Za-z0-9_-]{20,}',
+                '/*'
+            )
+        WHEN SpanAttributes['http.target'] IS NOT NULL AND SpanAttributes['http.target'] != ''
+            THEN replaceRegexpAll(
+                replaceRegexpAll(
+                    replaceRegexpOne(SpanAttributes['http.target'], '\\?.*$', ''),
+                    '/user\\d+',
+                    '/*'
+                ),
+                '/[A-Za-z0-9_-]{20,}',
+                '/*'
+            )
+        WHEN SpanAttributes['url.full'] IS NOT NULL AND SpanAttributes['url.full'] != ''
+            THEN replaceRegexpAll(
+                replaceRegexpAll(
+                    replaceRegexpOne(
+                        replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+(/.*)', '\\1'),
+                        '\\?.*$',
+                        ''
+                    ),
+                    '/user\\d+',
+                    '/*'
+                ),
+                '/[A-Za-z0-9_-]{20,}',
+                '/*'
+            )
+        ELSE ''
+    END AS masked_route,
+    
+    SpanAttributes['server.address'] AS server_address,
+    SpanAttributes['server.port'] AS server_port,
+    SpanAttributes['db.connection_string'] AS db_connection_string,
+    SpanAttributes['db.name'] AS db_name,
+    SpanAttributes['db.operation'] AS db_operation,
+    SpanAttributes['db.sql.table'] AS db_sql_table, 
+    SpanAttributes['db.statement'] AS db_statement,
+    SpanAttributes['db.system'] AS db_system,
+    SpanAttributes['db.user'] AS db_user,
+    SpanAttributes['rpc.system'] AS rpc_system,
+    SpanAttributes['rpc.service'] AS rpc_service,
+    SpanAttributes['rpc.method'] AS rpc_method,
+    SpanAttributes['rpc.grpc.status_code'] AS grpc_status_code,
+    SpanName AS span_name
+FROM otel_traces
+WHERE 
+    ResourceAttributes['k8s.namespace.name'] = '%s'
+    AND SpanKind IN ('Server', 'Client')
+    AND mapExists(
+        (k, v) -> (k IS NOT NULL AND k != '') AND (v IS NOT NULL AND v != ''),
+        SpanAttributes
+    );
+`, viewName, namespace)
+}
+
+// Client query - HTTP endpoints only (excludes database and RPC operations)
+// TrainTicket client traces query - HTTP endpoints only
+// NOTE: TrainTicket has no gRPC, so otel_traces_mv does NOT have rpc_system column
+// Only filters by db_system (unlike OtelDemo/DeathStarBench which also filter rpc_system)
 const clientTracesQuery = `
 SELECT DISTINCT
     ServiceName,
@@ -639,10 +918,13 @@ SELECT DISTINCT
 FROM otel_traces_mv
 FINAL
 WHERE SpanKind = 'Client'
+  AND (db_system IS NULL OR db_system = '')  -- Exclude database operations
+  AND request_method != ''  -- Must have HTTP method
 ORDER BY version ASC
 `
 
-// Dashboard query
+// TrainTicket dashboard query - HTTP endpoints only
+// NOTE: TrainTicket has no gRPC, so otel_traces_mv does NOT have rpc_system column
 const dashboardRoutesQuery = `
 SELECT DISTINCT
     ServiceName,
@@ -653,6 +935,8 @@ SELECT DISTINCT
 FROM otel_traces_mv
 FINAL
 WHERE ServiceName = 'ts-ui-dashboard'
+  AND (db_system IS NULL OR db_system = '')  -- Exclude database operations
+  AND request_method != ''  -- Must have HTTP method
 ORDER BY version ASC
 `
 
@@ -662,14 +946,15 @@ SELECT DISTINCT
     ServiceName,
     db_name,
     db_sql_table,
-    db_operation
+    db_operation,
+    span_name
 FROM otel_traces_mv
 FINAL
 WHERE db_system = 'mysql'
 ORDER BY version ASC
 `
 
-// HTTP Client traces query for OTel Demo
+// HTTP Client traces query for OTel Demo - HTTP endpoints only (excludes database and RPC)
 const otelDemoHTTPClientTracesQuery = `
 SELECT DISTINCT
     ServiceName,
@@ -682,6 +967,8 @@ SELECT DISTINCT
 FROM otel_demo_traces_mv
 FINAL
 WHERE SpanKind = 'Client'
+  AND (db_system IS NULL OR db_system = '')  -- Exclude database operations
+  AND (rpc_system IS NULL OR rpc_system = '')  -- Exclude RPC operations
   AND request_method != ''
   AND masked_route != ''
 ORDER BY ServiceName, masked_route
@@ -716,7 +1003,8 @@ SELECT DISTINCT
     grpc_status_code,
     server_address,
     server_port,
-    SpanKind
+    SpanKind,
+    span_name
 FROM otel_demo_traces_mv
 FINAL
 WHERE rpc_system != ''
@@ -731,7 +1019,8 @@ SELECT DISTINCT
     db_name,
     db_sql_table,
     db_operation,
-    db_system
+    db_system,
+    span_name
 FROM otel_demo_traces_mv
 FINAL
 WHERE db_system != ''
@@ -739,6 +1028,7 @@ ORDER BY ServiceName, db_name
 `
 
 // deathStarBenchHTTPClientTracesQuery generates a query for HTTP client traces for DeathStarBench systems
+// HTTP endpoints only (excludes database and RPC operations)
 func deathStarBenchHTTPClientTracesQuery(viewName string) string {
 	return fmt.Sprintf(`
 SELECT DISTINCT
@@ -752,6 +1042,8 @@ SELECT DISTINCT
 FROM %s
 FINAL
 WHERE SpanKind = 'Client'
+  AND (db_system IS NULL OR db_system = '')  -- Exclude database operations
+  AND (rpc_system IS NULL OR rpc_system = '')  -- Exclude RPC operations
   AND request_method != ''
   AND masked_route != ''
 ORDER BY ServiceName, masked_route
@@ -790,7 +1082,8 @@ SELECT DISTINCT
     grpc_status_code,
     server_address,
     server_port,
-    SpanKind
+    SpanKind,
+    span_name
 FROM %s
 FINAL
 WHERE rpc_system != ''
@@ -807,7 +1100,8 @@ SELECT DISTINCT
     db_name,
     db_sql_table,
     db_operation,
-    db_system
+    db_system,
+    span_name
 FROM %s
 FINAL
 WHERE db_system != ''
@@ -887,6 +1181,38 @@ func CreateOnlineBoutiqueMaterializedView(db *sql.DB, namespace string, viewName
 
 	if _, err := db.ExecContext(ctx, sql); err != nil {
 		return fmt.Errorf("error creating OnlineBoutique materialized view for namespace %s: %w", namespace, err)
+	}
+
+	return nil
+}
+
+// CreateTeaStoreMaterializedView creates the materialized view for TeaStore system
+// namespace: the k8s namespace (teastore)
+// viewName: the name of the materialized view to create
+func CreateTeaStoreMaterializedView(db *sql.DB, namespace string, viewName string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	sql := createTeaStoreMaterializedViewSQL(namespace, viewName)
+
+	if _, err := db.ExecContext(ctx, sql); err != nil {
+		return fmt.Errorf("error creating TeaStore materialized view for namespace %s: %w", namespace, err)
+	}
+
+	return nil
+}
+
+// CreateSockShopMaterializedView creates the materialized view for SockShop system
+// namespace: the k8s namespace (sockshop)
+// viewName: the name of the materialized view to create
+func CreateSockShopMaterializedView(db *sql.DB, namespace string, viewName string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	sql := createSockShopMaterializedViewSQL(namespace, viewName)
+
+	if _, err := db.ExecContext(ctx, sql); err != nil {
+		return fmt.Errorf("error creating SockShop materialized view for namespace %s: %w", namespace, err)
 	}
 
 	return nil
@@ -1006,13 +1332,14 @@ func QueryMySQLOperations(db *sql.DB) ([]DatabaseOperation, error) {
 	var results []DatabaseOperation
 	for rows.Next() {
 		var operation DatabaseOperation
-		var dbName, dbTable, dbOperation sql.NullString
+		var dbName, dbTable, dbOperation, spanName sql.NullString
 
 		if err := rows.Scan(
 			&operation.ServiceName,
 			&dbName,
 			&dbTable,
 			&dbOperation,
+			&spanName,
 		); err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
@@ -1026,6 +1353,9 @@ func QueryMySQLOperations(db *sql.DB) ([]DatabaseOperation, error) {
 		}
 		if dbOperation.Valid {
 			operation.Operation = dbOperation.String
+		}
+		if spanName.Valid {
+			operation.SpanName = spanName.String
 		}
 
 		// Set fixed MySQL connection info for TrainTicket
@@ -1171,7 +1501,7 @@ func QueryOtelDemoGRPCOperations(db *sql.DB) ([]GRPCOperation, error) {
 	var results []GRPCOperation
 	for rows.Next() {
 		var operation GRPCOperation
-		var serverAddr, serverPort, grpcStatus sql.NullString
+		var serverAddr, serverPort, grpcStatus, spanName sql.NullString
 
 		if err := rows.Scan(
 			&operation.ServiceName,
@@ -1182,6 +1512,7 @@ func QueryOtelDemoGRPCOperations(db *sql.DB) ([]GRPCOperation, error) {
 			&serverAddr,
 			&serverPort,
 			&operation.SpanKind,
+			&spanName,
 		); err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
@@ -1193,7 +1524,10 @@ func QueryOtelDemoGRPCOperations(db *sql.DB) ([]GRPCOperation, error) {
 			operation.ServerPort = serverPort.String
 		}
 		if grpcStatus.Valid {
-			operation.GRPCStatusCode = grpcStatus.String
+			operation.StatusCode = grpcStatus.String
+		}
+		if spanName.Valid {
+			operation.SpanName = spanName.String
 		}
 
 		// Map empty server address or IP to service based on RPC service
@@ -1225,7 +1559,7 @@ func QueryOtelDemoDatabaseOperations(db *sql.DB) ([]DatabaseOperation, error) {
 	var results []DatabaseOperation
 	for rows.Next() {
 		var operation DatabaseOperation
-		var dbName, dbTable, dbOperation, dbSystem sql.NullString
+		var dbName, dbTable, dbOperation, dbSystem, spanName sql.NullString
 
 		if err := rows.Scan(
 			&operation.ServiceName,
@@ -1233,6 +1567,7 @@ func QueryOtelDemoDatabaseOperations(db *sql.DB) ([]DatabaseOperation, error) {
 			&dbTable,
 			&dbOperation,
 			&dbSystem,
+			&spanName,
 		); err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
@@ -1248,6 +1583,9 @@ func QueryOtelDemoDatabaseOperations(db *sql.DB) ([]DatabaseOperation, error) {
 		}
 		if dbSystem.Valid {
 			operation.DBSystem = dbSystem.String
+		}
+		if spanName.Valid {
+			operation.SpanName = spanName.String
 		}
 
 		// Map database system to server address and port
@@ -1396,7 +1734,7 @@ func QueryDeathStarBenchGRPCOperations(db *sql.DB, viewName string, namespace st
 	var results []GRPCOperation
 	for rows.Next() {
 		var operation GRPCOperation
-		var serverAddr, serverPort, grpcStatus sql.NullString
+		var serverAddr, serverPort, grpcStatus, spanName sql.NullString
 
 		if err := rows.Scan(
 			&operation.ServiceName,
@@ -1407,6 +1745,7 @@ func QueryDeathStarBenchGRPCOperations(db *sql.DB, viewName string, namespace st
 			&serverAddr,
 			&serverPort,
 			&operation.SpanKind,
+			&spanName,
 		); err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
@@ -1418,7 +1757,10 @@ func QueryDeathStarBenchGRPCOperations(db *sql.DB, viewName string, namespace st
 			operation.ServerPort = serverPort.String
 		}
 		if grpcStatus.Valid {
-			operation.GRPCStatusCode = grpcStatus.String
+			operation.StatusCode = grpcStatus.String
+		}
+		if spanName.Valid {
+			operation.SpanName = spanName.String
 		}
 
 		// Map empty server address or IP to service based on RPC service/method
@@ -1452,7 +1794,7 @@ func QueryDeathStarBenchDatabaseOperations(db *sql.DB, viewName string) ([]Datab
 	var results []DatabaseOperation
 	for rows.Next() {
 		var operation DatabaseOperation
-		var dbName, dbTable, dbOperation, dbSystem sql.NullString
+		var dbName, dbTable, dbOperation, dbSystem, spanName sql.NullString
 
 		if err := rows.Scan(
 			&operation.ServiceName,
@@ -1460,6 +1802,7 @@ func QueryDeathStarBenchDatabaseOperations(db *sql.DB, viewName string) ([]Datab
 			&dbTable,
 			&dbOperation,
 			&dbSystem,
+			&spanName,
 		); err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
@@ -1475,6 +1818,9 @@ func QueryDeathStarBenchDatabaseOperations(db *sql.DB, viewName string) ([]Datab
 		}
 		if dbSystem.Valid {
 			operation.DBSystem = dbSystem.String
+		}
+		if spanName.Valid {
+			operation.SpanName = spanName.String
 		}
 
 		// Map database system to server address and port
@@ -1829,6 +2175,10 @@ func mapDeathStarBenchRouteToService(endpoint *ServiceEndpoint, namespace string
 		mapHotelReservationRouteToService(endpoint)
 	case "ob":
 		mapOnlineBoutiqueRouteToService(endpoint)
+	case "sockshop":
+		mapSockShopRouteToService(endpoint)
+	case "teastore":
+		mapTeaStoreRouteToService(endpoint)
 	}
 }
 
@@ -2242,6 +2592,10 @@ func mapDeathStarBenchGRPCToService(operation *GRPCOperation, namespace string) 
 		mapHotelReservationGRPCToService(operation, rpcService)
 	case "ob":
 		mapOnlineBoutiqueGRPCToService(operation, rpcService)
+	case "sockshop":
+		mapSockShopGRPCToService(operation, rpcService)
+	case "teastore":
+		mapTeaStoreGRPCToService(operation, rpcService)
 	}
 }
 
@@ -2377,6 +2731,115 @@ func mapOnlineBoutiqueGRPCToService(operation *GRPCOperation, rpcService string)
 			return
 		}
 	}
+}
+
+// mapSockShopRouteToService maps routes to services for Sock Shop
+func mapSockShopRouteToService(endpoint *ServiceEndpoint) {
+	route := endpoint.Route
+	spanName := endpoint.SpanName
+
+	// Service mapping based on route patterns and span names
+	// This is a placeholder - actual mappings should be determined from trace data
+	serviceMap := map[string]struct {
+		service string
+		port    string
+	}{
+		"/catalogue": {"catalogue", "80"},
+		"/carts":     {"carts", "80"},
+		"/orders":    {"orders", "80"},
+		"/payment":   {"payment", "80"},
+		"/shipping":  {"shipping", "80"},
+		"/user":      {"user", "80"},
+		"/":          {"front-end", "8079"},
+	}
+
+	// Sort patterns by length (longest first) to match more specific patterns first
+	patterns := make([]string, 0, len(serviceMap))
+	for pattern := range serviceMap {
+		patterns = append(patterns, pattern)
+	}
+	sort.Slice(patterns, func(i, j int) bool {
+		return len(patterns[i]) > len(patterns[j])
+	})
+
+	// Check route and span name with sorted patterns
+	for _, pattern := range patterns {
+		service := serviceMap[pattern]
+		if strings.Contains(route, pattern) || strings.Contains(spanName, pattern) {
+			endpoint.ServerAddress = service.service
+			endpoint.ServerPort = service.port
+			return
+		}
+	}
+
+	// Default to front-end if no match
+	if endpoint.ServerAddress == "" || isIPAddress(endpoint.ServerAddress) {
+		endpoint.ServerAddress = "front-end"
+		endpoint.ServerPort = "8079"
+	}
+}
+
+// mapTeaStoreRouteToService maps routes to services for Tea Store
+// Note: Route normalization (parameter patterns and port numbers) is now handled
+// in the materialized view SQL, so this function works with already-normalized routes
+func mapTeaStoreRouteToService(endpoint *ServiceEndpoint) {
+	route := endpoint.Route
+	spanName := endpoint.SpanName
+
+	// Service mapping based on route patterns and span names
+	// Routes are already normalized by the TeaStore materialized view
+	serviceMap := map[string]struct {
+		service string
+		port    string
+	}{
+		"/tools.descartes.teastore.auth":        {"teastore-auth", "8080"},
+		"/tools.descartes.teastore.image":       {"teastore-image", "8080"},
+		"/tools.descartes.teastore.persistence": {"teastore-persistence", "8080"},
+		"/tools.descartes.teastore.recommender": {"teastore-recommender", "8080"},
+		"/tools.descartes.teastore.webui":       {"teastore-webui", "8080"},
+		"/auth":                                  {"teastore-auth", "8080"},
+		"/image":                                 {"teastore-image", "8080"},
+		"/persistence":                           {"teastore-persistence", "8080"},
+		"/recommender":                           {"teastore-recommender", "8080"},
+		"/":                                      {"teastore-webui", "8080"},
+	}
+
+	// Sort patterns by length (longest first) to match more specific patterns first
+	patterns := make([]string, 0, len(serviceMap))
+	for pattern := range serviceMap {
+		patterns = append(patterns, pattern)
+	}
+	sort.Slice(patterns, func(i, j int) bool {
+		return len(patterns[i]) > len(patterns[j])
+	})
+
+	// Check route and span name with sorted patterns
+	for _, pattern := range patterns {
+		service := serviceMap[pattern]
+		if strings.Contains(route, pattern) || strings.Contains(spanName, pattern) {
+			endpoint.ServerAddress = service.service
+			endpoint.ServerPort = service.port
+			return
+		}
+	}
+
+	// Default to webui if no match
+	if endpoint.ServerAddress == "" || isIPAddress(endpoint.ServerAddress) {
+		endpoint.ServerAddress = "teastore-webui"
+		endpoint.ServerPort = "8080"
+	}
+}
+
+// mapSockShopGRPCToService maps gRPC services to server addresses for Sock Shop
+func mapSockShopGRPCToService(operation *GRPCOperation, rpcService string) {
+	// Sock Shop primarily uses HTTP/REST, not gRPC
+	// This is a placeholder in case gRPC is added in the future
+}
+
+// mapTeaStoreGRPCToService maps gRPC services to server addresses for Tea Store
+func mapTeaStoreGRPCToService(operation *GRPCOperation, rpcService string) {
+	// Tea Store primarily uses HTTP/REST, not gRPC
+	// This is a placeholder in case gRPC is added in the future
 }
 
 // isIPAddress checks if a string looks like an IP address

@@ -19,7 +19,7 @@ type GRPCOperation struct {
 	RPCSystem      string
 	RPCService     string
 	RPCMethod      string
-	GRPCStatusCode string
+	StatusCode     string
 	ServerAddress  string
 	ServerPort     string
 	SpanKind       string
@@ -143,7 +143,7 @@ func convertOtelDemoOperations(otelOps []oteldemogrpc.GRPCOperation) []GRPCOpera
 			RPCSystem:      op.RPCSystem,
 			RPCService:     op.RPCService,
 			RPCMethod:      op.RPCMethod,
-			GRPCStatusCode: op.GRPCStatusCode,
+			StatusCode:     op.StatusCode,
 			ServerAddress:  op.ServerAddress,
 			ServerPort:     op.ServerPort,
 			SpanKind:       op.SpanKind,
@@ -161,7 +161,7 @@ func convertMediaOperations(mediaOps []mediagrpc.GRPCOperation) []GRPCOperation 
 			RPCSystem:      op.RPCSystem,
 			RPCService:     op.RPCService,
 			RPCMethod:      op.RPCMethod,
-			GRPCStatusCode: op.GRPCStatusCode,
+			StatusCode:     op.StatusCode,
 			ServerAddress:  op.ServerAddress,
 			ServerPort:     op.ServerPort,
 			SpanKind:       op.SpanKind,
@@ -179,7 +179,7 @@ func convertHSOperations(hsOps []hsgrpc.GRPCOperation) []GRPCOperation {
 			RPCSystem:      op.RPCSystem,
 			RPCService:     op.RPCService,
 			RPCMethod:      op.RPCMethod,
-			GRPCStatusCode: op.GRPCStatusCode,
+			StatusCode:     op.StatusCode,
 			ServerAddress:  op.ServerAddress,
 			ServerPort:     op.ServerPort,
 			SpanKind:       op.SpanKind,
@@ -197,7 +197,7 @@ func convertSNOperations(snOps []sngrpc.GRPCOperation) []GRPCOperation {
 			RPCSystem:      op.RPCSystem,
 			RPCService:     op.RPCService,
 			RPCMethod:      op.RPCMethod,
-			GRPCStatusCode: op.GRPCStatusCode,
+			StatusCode:     op.StatusCode,
 			ServerAddress:  op.ServerAddress,
 			ServerPort:     op.ServerPort,
 			SpanKind:       op.SpanKind,
@@ -215,7 +215,7 @@ func convertOBOperations(obOps []obgrpc.GRPCOperation) []GRPCOperation {
 			RPCSystem:      op.RPCSystem,
 			RPCService:     op.RPCService,
 			RPCMethod:      op.RPCMethod,
-			GRPCStatusCode: op.GRPCStatusCode,
+			StatusCode:     op.StatusCode,
 			ServerAddress:  op.ServerAddress,
 			ServerPort:     op.ServerPort,
 			SpanKind:       op.SpanKind,
