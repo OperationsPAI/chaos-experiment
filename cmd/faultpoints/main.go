@@ -1,12 +1,13 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/grpcoperations"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/javaclassmethods"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
 
@@ -17,24 +18,25 @@ import (
 	obendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/serviceendpoints"
 	oteldemodb "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/databaseoperations"
 	oteldemogrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/grpcoperations"
-	oteldemojvm "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/javaclassmethods"
 	oteldemoendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/serviceendpoints"
 	sndb "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/databaseoperations"
 	snendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/serviceendpoints"
 	tsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/databaseoperations"
-	tsjvm "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/javaclassmethods"
 	tsendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/serviceendpoints"
 )
 
 func main() {
-	// Define global flags
-	system := flag.String("system", "ts", "Target system: 'ts' (TrainTicket), 'otel-demo' (OpenTelemetry Demo), 'media' (MediaMicroservices), 'hs' (HotelReservation), 'sn' (SocialNetwork), or 'ob' (OnlineBoutique)")
-	flag.Parse()
+	system, args, err := parseArgs(os.Args[1:])
+	if err != nil {
+		fmt.Printf("Error: %v\n\n", err)
+		printUsage()
+		os.Exit(1)
+	}
 
 	// Set the system type
-	systemType, err := systemconfig.ParseSystemType(*system)
+	systemType, err := systemconfig.ParseSystemType(system)
 	if err != nil {
-		fmt.Printf("Invalid system: %s. Must be 'ts', 'otel-demo', 'media', 'hs', 'sn', or 'ob'\n", *system)
+		fmt.Printf("Invalid system: %s. Must be 'ts', 'otel-demo', 'media', 'hs', 'sn', 'ob', 'sockshop', or 'teastore'\n", system)
 		os.Exit(1)
 	}
 	if err := systemconfig.SetCurrentSystem(systemType); err != nil {
@@ -45,8 +47,6 @@ func main() {
 	// Initialize resource lookup caches based on selected system
 	initResourceLookupForSystem()
 
-	// Get remaining args after flags
-	args := flag.Args()
 	if len(args) < 1 {
 		printUsage()
 		return
@@ -74,14 +74,44 @@ func main() {
 	}
 }
 
+func parseArgs(args []string) (string, []string, error) {
+	system := "ts"
+	remaining := make([]string, 0, len(args))
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+
+		if arg == "--system" {
+			if i+1 >= len(args) {
+				return "", nil, fmt.Errorf("missing value for --system")
+			}
+			system = args[i+1]
+			i++
+			continue
+		}
+
+		if strings.HasPrefix(arg, "--system=") {
+			system = strings.TrimPrefix(arg, "--system=")
+			if system == "" {
+				return "", nil, fmt.Errorf("missing value for --system")
+			}
+			continue
+		}
+
+		remaining = append(remaining, arg)
+	}
+
+	return system, remaining, nil
+}
+
 func printUsage() {
 	fmt.Println("Fault Injection Points Viewer")
 	fmt.Println()
 	fmt.Println("Usage:")
-	fmt.Println("  faultpoints [--system ts|otel-demo|media|hs|sn|ob] <command>")
+	fmt.Println("  faultpoints [--system ts|otel-demo|media|hs|sn|ob|sockshop|teastore] <command>")
 	fmt.Println()
 	fmt.Println("Flags:")
-	fmt.Println("  --system <system>  - Target system: 'ts' (TrainTicket), 'otel-demo' (OpenTelemetry Demo), 'media' (MediaMicroservices), 'hs' (HotelReservation), 'sn' (SocialNetwork), or 'ob' (OnlineBoutique)")
+	fmt.Println("  --system <system>  - Target system: 'ts' (TrainTicket), 'otel-demo' (OpenTelemetry Demo), 'media' (MediaMicroservices), 'hs' (HotelReservation), 'sn' (SocialNetwork), 'ob' (OnlineBoutique), 'sockshop' (Sock Shop), or 'teastore' (Tea Store)")
 	fmt.Println()
 	fmt.Println("Commands:")
 	fmt.Println("  list-http          - List all HTTP fault injection points")
@@ -775,40 +805,24 @@ func buildGRPCOnlyPairsForFaultpoints() map[string]bool {
 }
 
 func getJVMMethodsForCurrentSystem() ([]resourcelookup.AppMethodPair, error) {
-	var services []string
-	switch systemconfig.GetCurrentSystem() {
-	case systemconfig.SystemTrainTicket:
-		services = tsjvm.GetAllServices()
-	case systemconfig.SystemOtelDemo:
-		services = oteldemojvm.GetAllServices()
-	case systemconfig.SystemMediaMicroservices, systemconfig.SystemHotelReservation, systemconfig.SystemSocialNetwork:
-		// DeathStarBench systems don't use JVM - return empty list
-		return []resourcelookup.AppMethodPair{}, nil
-	default:
+	services := javaclassmethods.GetAllServices()
+	if len(services) == 0 {
+		cache := resourcelookup.GetSystemCache(systemconfig.GetCurrentSystem())
+		if cache != nil {
+			return cache.GetAllJVMMethods()
+		}
 		return []resourcelookup.AppMethodPair{}, nil
 	}
 
 	result := make([]resourcelookup.AppMethodPair, 0)
 	for _, serviceName := range services {
-		switch systemconfig.GetCurrentSystem() {
-		case systemconfig.SystemTrainTicket:
-			methods := tsjvm.GetClassMethodsByService(serviceName)
-			for _, m := range methods {
-				result = append(result, resourcelookup.AppMethodPair{
-					AppName:    serviceName,
-					ClassName:  m.ClassName,
-					MethodName: m.MethodName,
-				})
-			}
-		case systemconfig.SystemOtelDemo:
-			methods := oteldemojvm.GetClassMethodsByService(serviceName)
-			for _, m := range methods {
-				result = append(result, resourcelookup.AppMethodPair{
-					AppName:    serviceName,
-					ClassName:  m.ClassName,
-					MethodName: m.MethodName,
-				})
-			}
+		methods := javaclassmethods.GetClassMethodsByService(serviceName)
+		for _, m := range methods {
+			result = append(result, resourcelookup.AppMethodPair{
+				AppName:    serviceName,
+				ClassName:  m.ClassName,
+				MethodName: m.MethodName,
+			})
 		}
 	}
 	return result, nil

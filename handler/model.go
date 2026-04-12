@@ -453,7 +453,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			}
 
 			start = defaultStartIndex
-			end = len(methods) - 1
+			end = max(defaultStartIndex, len(methods)-1)
 		case keyTarget:
 			// For flattened runtime mutator targets
 			targets, err := systemCache.GetAllJVMRuntimeMutatorTargets()
@@ -462,7 +462,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			}
 
 			start = defaultStartIndex
-			end = len(targets) - 1
+			end = max(defaultStartIndex, len(targets)-1)
 		case keyEndpoint:
 			// For flattened HTTP endpoints
 			endpoints, err := systemCache.GetAllHTTPEndpoints()
@@ -471,7 +471,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			}
 
 			start = defaultStartIndex
-			end = len(endpoints) - 1
+			end = max(defaultStartIndex, len(endpoints)-1)
 		case keyNetworkPair:
 			// For flattened network pairs
 			pairs, err := systemCache.GetAllNetworkPairs()
@@ -480,7 +480,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			}
 
 			start = defaultStartIndex
-			end = len(pairs) - 1
+			end = max(defaultStartIndex, len(pairs)-1)
 		case keyContainer:
 			// For flattened containers
 			containers, err := systemCache.GetAllContainers(ctx, namespace)
@@ -489,7 +489,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			}
 
 			start = defaultStartIndex
-			end = len(containers) - 1
+			end = max(defaultStartIndex, len(containers)-1)
 		case keyDNSEndpoint:
 			// For flattened DNS endpoints
 			endpoints, err := systemCache.GetAllDNSEndpoints()
@@ -498,7 +498,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			}
 
 			start = defaultStartIndex
-			end = len(endpoints) - 1
+			end = max(defaultStartIndex, len(endpoints)-1)
 		case keyDatabase:
 			// For flattened database operations
 			dbOps, err := systemCache.GetAllDatabaseOperations()
@@ -507,7 +507,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			}
 
 			start = defaultStartIndex
-			end = len(dbOps) - 1
+			end = max(defaultStartIndex, len(dbOps)-1)
 		}
 	}
 

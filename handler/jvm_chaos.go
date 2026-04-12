@@ -2,14 +2,12 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"strconv"
 	"strings"
 
 	chaos "github.com/LGU-SE-Internal/chaos-experiment/chaos"
 	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
@@ -64,16 +62,10 @@ func (s *JVMLatencySpec) Create(cli cli.Client, opts ...Option) (string, error) 
 	ns := conf.Namespace
 	system := conf.System
 
-	methods, err := resourcelookup.GetSystemCache(system).GetAllJVMMethods()
+	methodPair, err := getJVMMethodByIndex(system, s.MethodIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get JVM methods: %w", err)
+		return "", err
 	}
-
-	if s.MethodIdx < 0 || s.MethodIdx >= len(methods) {
-		return "", fmt.Errorf("method index out of range: %d (max: %d)", s.MethodIdx, len(methods)-1)
-	}
-
-	methodPair := methods[s.MethodIdx]
 	appName := methodPair.AppName
 	className := methodPair.ClassName
 	methodName := methodPair.MethodName
@@ -124,16 +116,10 @@ func (s *JVMReturnSpec) Create(cli cli.Client, opts ...Option) (string, error) {
 	ns := conf.Namespace
 	system := conf.System
 
-	methods, err := resourcelookup.GetSystemCache(system).GetAllJVMMethods()
+	methodPair, err := getJVMMethodByIndex(system, s.MethodIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get JVM methods: %w", err)
+		return "", err
 	}
-
-	if s.MethodIdx < 0 || s.MethodIdx >= len(methods) {
-		return "", fmt.Errorf("method index out of range: %d (max: %d)", s.MethodIdx, len(methods)-1)
-	}
-
-	methodPair := methods[s.MethodIdx]
 	appName := methodPair.AppName
 	className := methodPair.ClassName
 	methodName := methodPair.MethodName
@@ -198,16 +184,10 @@ func (s *JVMExceptionSpec) Create(cli cli.Client, opts ...Option) (string, error
 	ns := conf.Namespace
 	system := conf.System
 
-	methods, err := resourcelookup.GetSystemCache(system).GetAllJVMMethods()
+	methodPair, err := getJVMMethodByIndex(system, s.MethodIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get JVM methods: %w", err)
+		return "", err
 	}
-
-	if s.MethodIdx < 0 || s.MethodIdx >= len(methods) {
-		return "", fmt.Errorf("method index out of range: %d (max: %d)", s.MethodIdx, len(methods)-1)
-	}
-
-	methodPair := methods[s.MethodIdx]
 	appName := methodPair.AppName
 	className := methodPair.ClassName
 	methodName := methodPair.MethodName
@@ -271,16 +251,10 @@ func (s *JVMGCSpec) Create(cli cli.Client, opts ...Option) (string, error) {
 	ns := conf.Namespace
 	system := conf.System
 
-	appLabels, err := resourcelookup.GetSystemCache(system).GetAllAppLabels(ctx, ns, defaultAppLabel)
+	appName, err := getAppLabelByIndex(ctx, system, ns, s.AppIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get app labels: %w", err)
+		return "", err
 	}
-
-	if s.AppIdx < 0 || s.AppIdx >= len(appLabels) {
-		return "", fmt.Errorf("app index out of range: %d (max: %d)", s.AppIdx, len(appLabels)-1)
-	}
-
-	appName := appLabels[s.AppIdx]
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 
 	return controllers.CreateJVMChaos(cli, ctx, ns, appName,
@@ -320,16 +294,10 @@ func (s *JVMCPUStressSpec) Create(cli cli.Client, opts ...Option) (string, error
 	ns := conf.Namespace
 	system := conf.System
 
-	methods, err := resourcelookup.GetSystemCache(system).GetAllJVMMethods()
+	methodPair, err := getJVMMethodByIndex(system, s.MethodIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get JVM methods: %w", err)
+		return "", err
 	}
-
-	if s.MethodIdx < 0 || s.MethodIdx >= len(methods) {
-		return "", fmt.Errorf("method index out of range: %d (max: %d)", s.MethodIdx, len(methods)-1)
-	}
-
-	methodPair := methods[s.MethodIdx]
 	appName := methodPair.AppName
 	className := methodPair.ClassName
 	methodName := methodPair.MethodName
@@ -379,16 +347,10 @@ func (s *JVMMemoryStressSpec) Create(cli cli.Client, opts ...Option) (string, er
 	ns := conf.Namespace
 	system := conf.System
 
-	methods, err := resourcelookup.GetSystemCache(system).GetAllJVMMethods()
+	methodPair, err := getJVMMethodByIndex(system, s.MethodIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get JVM methods: %w", err)
+		return "", err
 	}
-
-	if s.MethodIdx < 0 || s.MethodIdx >= len(methods) {
-		return "", fmt.Errorf("method index out of range: %d (max: %d)", s.MethodIdx, len(methods)-1)
-	}
-
-	methodPair := methods[s.MethodIdx]
 	appName := methodPair.AppName
 	className := methodPair.ClassName
 	methodName := methodPair.MethodName
@@ -463,16 +425,10 @@ func (s *JVMMySQLLatencySpec) Create(cli cli.Client, opts ...Option) (string, er
 	ns := conf.Namespace
 	system := conf.System
 
-	dbOps, err := resourcelookup.GetSystemCache(system).GetAllDatabaseOperations()
+	dbOp, err := getDatabaseOperationByIndex(system, s.DatabaseIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get database operations: %w", err)
+		return "", err
 	}
-
-	if s.DatabaseIdx < 0 || s.DatabaseIdx >= len(dbOps) {
-		return "", fmt.Errorf("database operation index out of range: %d (max: %d)", s.DatabaseIdx, len(dbOps)-1)
-	}
-
-	dbOp := dbOps[s.DatabaseIdx]
 	appName := dbOp.AppName
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 
@@ -522,16 +478,10 @@ func (s *JVMMySQLExceptionSpec) Create(cli cli.Client, opts ...Option) (string, 
 	ns := conf.Namespace
 	system := conf.System
 
-	dbOps, err := resourcelookup.GetSystemCache(system).GetAllDatabaseOperations()
+	dbOp, err := getDatabaseOperationByIndex(system, s.DatabaseIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get database operations: %w", err)
+		return "", err
 	}
-
-	if s.DatabaseIdx < 0 || s.DatabaseIdx >= len(dbOps) {
-		return "", fmt.Errorf("database operation index out of range: %d (max: %d)", s.DatabaseIdx, len(dbOps)-1)
-	}
-
-	dbOp := dbOps[s.DatabaseIdx]
 	appName := dbOp.AppName
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 

@@ -57,6 +57,8 @@ var (
 		SystemHotelReservation:   "^hs\\d+$",
 		SystemSocialNetwork:      "^sn\\d+$",
 		SystemOnlineBoutique:     "^ob\\d+$",
+		SystemSockShop:           "^sockshop\\d+$",
+		SystemTeaStore:           "^teastore\\d+$",
 	}
 )
 

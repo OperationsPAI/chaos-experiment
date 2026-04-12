@@ -31,15 +31,33 @@ type DatabaseOperation struct {
 // RPCOperation represents a gRPC/RPC operation from ClickHouse analysis
 // This stores only RPC-specific fields
 type RPCOperation struct {
-	ServiceName    string // Service making the RPC call
-	RPCSystem      string // grpc, thrift, etc.
-	RPCService     string // RPC service name
-	RPCMethod      string // RPC method name
-	StatusCode     string // RPC status code
-	ServerAddress  string // Target service
-	ServerPort     string // Target port
-	SpanKind       string // Server or Client
-	SpanName       string // Span name for groundtruth
+	ServiceName   string // Service making the RPC call
+	RPCSystem     string // grpc, thrift, etc.
+	RPCService    string // RPC service name
+	RPCMethod     string // RPC method name
+	StatusCode    string // RPC status code
+	ServerAddress string // Target service
+	ServerPort    string // Target port
+	SpanKind      string // Server or Client
+	SpanName      string // Span name for groundtruth
+}
+
+// RuntimeMutatorMutationSpec describes one valid runtime mutation option for a method.
+type RuntimeMutatorMutationSpec struct {
+	Type        int    `json:"type"`
+	TypeName    string `json:"typeName"`
+	From        string `json:"from,omitempty"`
+	To          string `json:"to,omitempty"`
+	Strategy    string `json:"strategy,omitempty"`
+	Description string `json:"description,omitempty"`
+}
+
+// RuntimeMutatorTarget is one flattened valid runtime mutator target.
+type RuntimeMutatorTarget struct {
+	AppName    string                     `json:"app_name"`
+	ClassName  string                     `json:"class_name"`
+	MethodName string                     `json:"method_name"`
+	Mutation   RuntimeMutatorMutationSpec `json:"mutation"`
 }
 
 // Legacy type aliases for backward compatibility with existing generated code

@@ -2,11 +2,9 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,16 +40,10 @@ func (s *PodFailureSpec) Create(cli cli.Client, opts ...Option) (string, error) 
 	ns := conf.Namespace
 	system := conf.System
 
-	appLabels, err := resourcelookup.GetSystemCache(system).GetAllAppLabels(ctx, ns, defaultAppLabel)
+	appName, err := getAppLabelByIndex(ctx, system, ns, s.AppIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get app labels: %w", err)
+		return "", err
 	}
-
-	if s.AppIdx < 0 || s.AppIdx >= len(appLabels) {
-		return "", fmt.Errorf("app index out of range: %d (max: %d)", s.AppIdx, len(appLabels)-1)
-	}
-
-	appName := appLabels[s.AppIdx]
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 	action := chaosmeshv1alpha1.PodFailureAction
 
@@ -89,16 +81,10 @@ func (s *PodKillSpec) Create(cli cli.Client, opts ...Option) (string, error) {
 	ns := conf.Namespace
 	system := conf.System
 
-	appLabels, err := resourcelookup.GetSystemCache(system).GetAllAppLabels(ctx, ns, defaultAppLabel)
+	appName, err := getAppLabelByIndex(ctx, system, ns, s.AppIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get app labels: %w", err)
+		return "", err
 	}
-
-	if s.AppIdx < 0 || s.AppIdx >= len(appLabels) {
-		return "", fmt.Errorf("app index out of range: %d (max: %d)", s.AppIdx, len(appLabels)-1)
-	}
-
-	appName := appLabels[s.AppIdx]
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 	action := chaosmeshv1alpha1.PodKillAction
 
@@ -135,16 +121,10 @@ func (s *ContainerKillSpec) Create(cli cli.Client, opts ...Option) (string, erro
 	ns := conf.Namespace
 	system := conf.System
 
-	containers, err := resourcelookup.GetSystemCache(system).GetAllContainers(ctx, ns)
+	containerInfo, err := getContainerInfoByIndex(ctx, system, ns, s.ContainerIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get containers: %w", err)
+		return "", err
 	}
-
-	if s.ContainerIdx < 0 || s.ContainerIdx >= len(containers) {
-		return "", fmt.Errorf("container index out of range: %d (max: %d)", s.ContainerIdx, len(containers)-1)
-	}
-
-	containerInfo := containers[s.ContainerIdx]
 	appName := containerInfo.AppLabel
 	containerName := containerInfo.ContainerName
 

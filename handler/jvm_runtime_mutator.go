@@ -7,7 +7,6 @@ import (
 
 	chaos "github.com/LGU-SE-Internal/chaos-experiment/chaos"
 	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -43,16 +42,10 @@ func (s *JVMRuntimeMutatorSpec) Create(cli cli.Client, opts ...Option) (string, 
 	ns := conf.Namespace
 	system := conf.System
 
-	targets, err := resourcelookup.GetSystemCache(system).GetAllJVMRuntimeMutatorTargets()
+	target, err := getJVMRuntimeMutatorTargetByIndex(system, s.MutatorTargetIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get JVM runtime mutator targets: %w", err)
+		return "", err
 	}
-
-	if s.MutatorTargetIdx < 0 || s.MutatorTargetIdx >= len(targets) {
-		return "", fmt.Errorf("target index out of range: %d (max: %d)", s.MutatorTargetIdx, len(targets)-1)
-	}
-
-	target := targets[s.MutatorTargetIdx]
 	appName := target.AppName
 	className := target.ClassName
 	methodName := target.MethodName

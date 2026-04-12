@@ -14,13 +14,22 @@ func main() {
 	// Define command-line flags
 	servicesPath := flag.String("services", "", "Path to the Java services directory")
 	outputPath := flag.String("output", "", "Path for the generated Go file")
-	system := flag.String("system", "ts", "Target system: 'ts' (TrainTicket) or 'otel-demo' (OpenTelemetry Demo)")
+	system := flag.String("system", "ts", "Target system: 'ts' (TrainTicket), 'otel-demo' (OpenTelemetry Demo), 'sockshop' (Sock Shop), 'teastore' (Tea Store), or 'ob' (OnlineBoutique)")
 	flag.Parse()
 
 	// Validate and set the system type using systemconfig
 	systemType, err := systemconfig.ParseSystemType(*system)
 	if err != nil {
-		fmt.Printf("Invalid system: %s. Must be 'ts' or 'otel-demo'\n", *system)
+		fmt.Printf("Invalid system: %s. Must be 'ts', 'otel-demo', 'sockshop', 'teastore', or 'ob'\n", *system)
+		os.Exit(1)
+	}
+
+	if systemType != systemconfig.SystemTrainTicket &&
+		systemType != systemconfig.SystemOtelDemo &&
+		systemType != systemconfig.SystemSockShop &&
+		systemType != systemconfig.SystemTeaStore &&
+		systemType != systemconfig.SystemOnlineBoutique {
+		fmt.Printf("Unsupported system for Java analyzer: %s. Supported: 'ts', 'otel-demo', 'sockshop', 'teastore', 'ob'\n", *system)
 		os.Exit(1)
 	}
 	if err := systemconfig.SetCurrentSystem(systemType); err != nil {
@@ -28,16 +37,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Set default services path when not provided
+	// Require services path explicitly to avoid hardcoded repository locations.
 	if *servicesPath == "" {
-		if systemType == systemconfig.SystemTrainTicket {
-			*servicesPath = filepath.Clean("../train-ticket")
-			fmt.Printf("Services path not provided, using default TrainTicket path: %s\n", *servicesPath)
-		} else {
-			fmt.Println("Error: services path is required for otel-demo")
-			flag.Usage()
-			os.Exit(1)
-		}
+		fmt.Println("Error: services path is required, e.g. --services ../train-ticket")
+		flag.Usage()
+		os.Exit(1)
 	}
 
 	// Set default output path based on system type
@@ -59,6 +63,8 @@ func main() {
 			systemDir = "sockshop"
 		case systemconfig.SystemTeaStore:
 			systemDir = "teastore"
+		case systemconfig.SystemOnlineBoutique:
+			systemDir = "ob"
 		default:
 			systemDir = string(systemType)
 		}

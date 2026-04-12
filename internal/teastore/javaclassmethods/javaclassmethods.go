@@ -10,7 +10,7 @@ type ClassMethodEntry struct {
 
 // ServiceClassMethods maps service names to their class-method pairs
 var ServiceClassMethods = map[string][]ClassMethodEntry{
-	"tools.descartes.teastore.auth": {
+	"teastore-auth": {
 		{ClassName: "tools.descartes.teastore.auth.security.ConstantKeyProvider", MethodName: "getKey"},
 		{ClassName: "tools.descartes.teastore.auth.security.BCryptProvider", MethodName: "BCryptProvider"},
 		{ClassName: "tools.descartes.teastore.auth.security.BCryptProvider", MethodName: "checkPassword"},
@@ -32,7 +32,7 @@ var ServiceClassMethods = map[string][]ClassMethodEntry{
 		{ClassName: "tools.descartes.teastore.auth.rest.AuthUserActionsRest", MethodName: "logout"},
 		{ClassName: "tools.descartes.teastore.auth.rest.AuthUserActionsRest", MethodName: "isLoggedIn"},
 	},
-	"tools.descartes.teastore.image": {
+	"teastore-image": {
 		{ClassName: "tools.descartes.teastore.image.ImageScaler", MethodName: "ImageScaler"},
 		{ClassName: "tools.descartes.teastore.image.ImageScaler", MethodName: "scale"},
 		{ClassName: "tools.descartes.teastore.image.ImageScaler", MethodName: "scale"},
@@ -170,7 +170,7 @@ var ServiceClassMethods = map[string][]ClassMethodEntry{
 		{ClassName: "tools.descartes.teastore.image.cache.AbstractCacheWrapper", MethodName: "removeEntryByCachingStrategy"},
 		{ClassName: "tools.descartes.teastore.image.cache.AbstractCacheWrapper", MethodName: "createEntry"},
 	},
-	"tools.descartes.teastore.persistence": {
+	"teastore-persistence": {
 		{ClassName: "tools.descartes.teastore.persistence.repository.DatabaseManagementEntity", MethodName: "DatabaseManagementEntity"},
 		{ClassName: "tools.descartes.teastore.persistence.repository.DatabaseManagementEntity", MethodName: "getId"},
 		{ClassName: "tools.descartes.teastore.persistence.repository.DatabaseManagementEntity", MethodName: "isFinishedGenerating"},
@@ -381,7 +381,7 @@ var ServiceClassMethods = map[string][]ClassMethodEntry{
 		{ClassName: "tools.descartes.teastore.persistence.RegistrationDaemon", MethodName: "contextDestroyed"},
 		{ClassName: "tools.descartes.teastore.persistence.RegistrationDaemon", MethodName: "contextInitialized"},
 	},
-	"tools.descartes.teastore.recommender": {
+	"teastore-recommender": {
 		{ClassName: "tools.descartes.teastore.recommender.servlet.RetrainDaemon", MethodName: "RetrainDaemon"},
 		{ClassName: "tools.descartes.teastore.recommender.servlet.RetrainDaemon", MethodName: "run"},
 		{ClassName: "tools.descartes.teastore.recommender.servlet.RetrainDaemon", MethodName: "callback"},
@@ -439,7 +439,7 @@ var ServiceClassMethods = map[string][]ClassMethodEntry{
 		{ClassName: "tools.descartes.teastore.recommender.algorithm.OrderItemSet", MethodName: "getUserId"},
 		{ClassName: "tools.descartes.teastore.recommender.algorithm.OrderItemSet", MethodName: "setUserId"},
 	},
-	"tools.descartes.teastore.registry": {
+	"teastore-registry": {
 		{ClassName: "tools.descartes.teastore.registry.servlet.IndexServlet", MethodName: "IndexServlet"},
 		{ClassName: "tools.descartes.teastore.registry.servlet.IndexServlet", MethodName: "doGet"},
 		{ClassName: "tools.descartes.teastore.registry.servlet.IndexServlet", MethodName: "doPost"},
@@ -461,7 +461,7 @@ var ServiceClassMethods = map[string][]ClassMethodEntry{
 		{ClassName: "tools.descartes.teastore.registry.rest.HeartbeatInfo", MethodName: "newHeartbeat"},
 		{ClassName: "tools.descartes.teastore.registry.rest.HeartbeatInfo", MethodName: "isAlive"},
 	},
-	"tools.descartes.teastore.webui": {
+	"teastore-webui": {
 		{ClassName: "tools.descartes.teastore.webui.startup.WebuiStartup", MethodName: "WebuiStartup"},
 		{ClassName: "tools.descartes.teastore.webui.startup.WebuiStartup", MethodName: "contextDestroyed"},
 		{ClassName: "tools.descartes.teastore.webui.startup.WebuiStartup", MethodName: "contextInitialized"},

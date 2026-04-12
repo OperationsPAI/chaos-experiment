@@ -11,18 +11,20 @@ import (
 	obgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/grpcoperations"
 	oteldemogrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/grpcoperations"
 	sngrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/grpcoperations"
+	sockshopgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/grpcoperations"
+	teastoregrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/grpcoperations"
 )
 
 // GRPCOperation represents a gRPC operation from ClickHouse analysis
 type GRPCOperation struct {
-	ServiceName    string
-	RPCSystem      string
-	RPCService     string
-	RPCMethod      string
-	StatusCode     string
-	ServerAddress  string
-	ServerPort     string
-	SpanKind       string
+	ServiceName   string
+	RPCSystem     string
+	RPCService    string
+	RPCMethod     string
+	StatusCode    string
+	ServerAddress string
+	ServerPort    string
+	SpanKind      string
 }
 
 // GetOperationsByService returns all gRPC operations for a service based on current system
@@ -44,6 +46,12 @@ func GetOperationsByService(serviceName string) []GRPCOperation {
 	case systemconfig.SystemOnlineBoutique:
 		obOps := obgrpc.GetOperationsByService(serviceName)
 		return convertOBOperations(obOps)
+	case systemconfig.SystemSockShop:
+		sockshopOps := sockshopgrpc.GetOperationsByService(serviceName)
+		return convertSockShopOperations(sockshopOps)
+	case systemconfig.SystemTeaStore:
+		teastoreOps := teastoregrpc.GetOperationsByService(serviceName)
+		return convertTeaStoreOperations(teastoreOps)
 	default:
 		// TrainTicket doesn't have gRPC operations
 		return []GRPCOperation{}
@@ -62,6 +70,12 @@ func GetAllGRPCServices() []string {
 		return hsgrpc.GetAllGRPCServices()
 	case systemconfig.SystemSocialNetwork:
 		return sngrpc.GetAllGRPCServices()
+	case systemconfig.SystemOnlineBoutique:
+		return obgrpc.GetAllGRPCServices()
+	case systemconfig.SystemSockShop:
+		return sockshopgrpc.GetAllGRPCServices()
+	case systemconfig.SystemTeaStore:
+		return teastoregrpc.GetAllGRPCServices()
 	default:
 		// TrainTicket doesn't have gRPC operations
 		return []string{}
@@ -84,6 +98,15 @@ func GetClientOperations() []GRPCOperation {
 	case systemconfig.SystemSocialNetwork:
 		snOps := sngrpc.GetClientOperations()
 		return convertSNOperations(snOps)
+	case systemconfig.SystemOnlineBoutique:
+		obOps := obgrpc.GetClientOperations()
+		return convertOBOperations(obOps)
+	case systemconfig.SystemSockShop:
+		sockshopOps := sockshopgrpc.GetClientOperations()
+		return convertSockShopOperations(sockshopOps)
+	case systemconfig.SystemTeaStore:
+		teastoreOps := teastoregrpc.GetClientOperations()
+		return convertTeaStoreOperations(teastoreOps)
 	default:
 		// TrainTicket doesn't have gRPC operations
 		return []GRPCOperation{}
@@ -106,6 +129,15 @@ func GetServerOperations() []GRPCOperation {
 	case systemconfig.SystemSocialNetwork:
 		snOps := sngrpc.GetServerOperations()
 		return convertSNOperations(snOps)
+	case systemconfig.SystemOnlineBoutique:
+		obOps := obgrpc.GetServerOperations()
+		return convertOBOperations(obOps)
+	case systemconfig.SystemSockShop:
+		sockshopOps := sockshopgrpc.GetServerOperations()
+		return convertSockShopOperations(sockshopOps)
+	case systemconfig.SystemTeaStore:
+		teastoreOps := teastoregrpc.GetServerOperations()
+		return convertTeaStoreOperations(teastoreOps)
 	default:
 		// TrainTicket doesn't have gRPC operations
 		return []GRPCOperation{}
@@ -128,6 +160,15 @@ func GetOperationsByRPCService(rpcService string) []GRPCOperation {
 	case systemconfig.SystemSocialNetwork:
 		snOps := sngrpc.GetOperationsByRPCService(rpcService)
 		return convertSNOperations(snOps)
+	case systemconfig.SystemOnlineBoutique:
+		obOps := obgrpc.GetOperationsByRPCService(rpcService)
+		return convertOBOperations(obOps)
+	case systemconfig.SystemSockShop:
+		sockshopOps := sockshopgrpc.GetOperationsByRPCService(rpcService)
+		return convertSockShopOperations(sockshopOps)
+	case systemconfig.SystemTeaStore:
+		teastoreOps := teastoregrpc.GetOperationsByRPCService(rpcService)
+		return convertTeaStoreOperations(teastoreOps)
 	default:
 		// TrainTicket doesn't have gRPC operations
 		return []GRPCOperation{}
@@ -139,14 +180,14 @@ func convertOtelDemoOperations(otelOps []oteldemogrpc.GRPCOperation) []GRPCOpera
 	result := make([]GRPCOperation, len(otelOps))
 	for i, op := range otelOps {
 		result[i] = GRPCOperation{
-			ServiceName:    op.ServiceName,
-			RPCSystem:      op.RPCSystem,
-			RPCService:     op.RPCService,
-			RPCMethod:      op.RPCMethod,
-			StatusCode:     op.StatusCode,
-			ServerAddress:  op.ServerAddress,
-			ServerPort:     op.ServerPort,
-			SpanKind:       op.SpanKind,
+			ServiceName:   op.ServiceName,
+			RPCSystem:     op.RPCSystem,
+			RPCService:    op.RPCService,
+			RPCMethod:     op.RPCMethod,
+			StatusCode:    op.StatusCode,
+			ServerAddress: op.ServerAddress,
+			ServerPort:    op.ServerPort,
+			SpanKind:      op.SpanKind,
 		}
 	}
 	return result
@@ -157,14 +198,14 @@ func convertMediaOperations(mediaOps []mediagrpc.GRPCOperation) []GRPCOperation 
 	result := make([]GRPCOperation, len(mediaOps))
 	for i, op := range mediaOps {
 		result[i] = GRPCOperation{
-			ServiceName:    op.ServiceName,
-			RPCSystem:      op.RPCSystem,
-			RPCService:     op.RPCService,
-			RPCMethod:      op.RPCMethod,
-			StatusCode:     op.StatusCode,
-			ServerAddress:  op.ServerAddress,
-			ServerPort:     op.ServerPort,
-			SpanKind:       op.SpanKind,
+			ServiceName:   op.ServiceName,
+			RPCSystem:     op.RPCSystem,
+			RPCService:    op.RPCService,
+			RPCMethod:     op.RPCMethod,
+			StatusCode:    op.StatusCode,
+			ServerAddress: op.ServerAddress,
+			ServerPort:    op.ServerPort,
+			SpanKind:      op.SpanKind,
 		}
 	}
 	return result
@@ -175,14 +216,14 @@ func convertHSOperations(hsOps []hsgrpc.GRPCOperation) []GRPCOperation {
 	result := make([]GRPCOperation, len(hsOps))
 	for i, op := range hsOps {
 		result[i] = GRPCOperation{
-			ServiceName:    op.ServiceName,
-			RPCSystem:      op.RPCSystem,
-			RPCService:     op.RPCService,
-			RPCMethod:      op.RPCMethod,
-			StatusCode:     op.StatusCode,
-			ServerAddress:  op.ServerAddress,
-			ServerPort:     op.ServerPort,
-			SpanKind:       op.SpanKind,
+			ServiceName:   op.ServiceName,
+			RPCSystem:     op.RPCSystem,
+			RPCService:    op.RPCService,
+			RPCMethod:     op.RPCMethod,
+			StatusCode:    op.StatusCode,
+			ServerAddress: op.ServerAddress,
+			ServerPort:    op.ServerPort,
+			SpanKind:      op.SpanKind,
 		}
 	}
 	return result
@@ -193,14 +234,14 @@ func convertSNOperations(snOps []sngrpc.GRPCOperation) []GRPCOperation {
 	result := make([]GRPCOperation, len(snOps))
 	for i, op := range snOps {
 		result[i] = GRPCOperation{
-			ServiceName:    op.ServiceName,
-			RPCSystem:      op.RPCSystem,
-			RPCService:     op.RPCService,
-			RPCMethod:      op.RPCMethod,
-			StatusCode:     op.StatusCode,
-			ServerAddress:  op.ServerAddress,
-			ServerPort:     op.ServerPort,
-			SpanKind:       op.SpanKind,
+			ServiceName:   op.ServiceName,
+			RPCSystem:     op.RPCSystem,
+			RPCService:    op.RPCService,
+			RPCMethod:     op.RPCMethod,
+			StatusCode:    op.StatusCode,
+			ServerAddress: op.ServerAddress,
+			ServerPort:    op.ServerPort,
+			SpanKind:      op.SpanKind,
 		}
 	}
 	return result
@@ -211,14 +252,50 @@ func convertOBOperations(obOps []obgrpc.GRPCOperation) []GRPCOperation {
 	result := make([]GRPCOperation, len(obOps))
 	for i, op := range obOps {
 		result[i] = GRPCOperation{
-			ServiceName:    op.ServiceName,
-			RPCSystem:      op.RPCSystem,
-			RPCService:     op.RPCService,
-			RPCMethod:      op.RPCMethod,
-			StatusCode:     op.StatusCode,
-			ServerAddress:  op.ServerAddress,
-			ServerPort:     op.ServerPort,
-			SpanKind:       op.SpanKind,
+			ServiceName:   op.ServiceName,
+			RPCSystem:     op.RPCSystem,
+			RPCService:    op.RPCService,
+			RPCMethod:     op.RPCMethod,
+			StatusCode:    op.StatusCode,
+			ServerAddress: op.ServerAddress,
+			ServerPort:    op.ServerPort,
+			SpanKind:      op.SpanKind,
+		}
+	}
+	return result
+}
+
+// convertSockShopOperations converts sockshop-specific operations to the common type
+func convertSockShopOperations(sockshopOps []sockshopgrpc.GRPCOperation) []GRPCOperation {
+	result := make([]GRPCOperation, len(sockshopOps))
+	for i, op := range sockshopOps {
+		result[i] = GRPCOperation{
+			ServiceName:   op.ServiceName,
+			RPCSystem:     op.RPCSystem,
+			RPCService:    op.RPCService,
+			RPCMethod:     op.RPCMethod,
+			StatusCode:    op.StatusCode,
+			ServerAddress: op.ServerAddress,
+			ServerPort:    op.ServerPort,
+			SpanKind:      op.SpanKind,
+		}
+	}
+	return result
+}
+
+// convertTeaStoreOperations converts teastore-specific operations to the common type
+func convertTeaStoreOperations(teastoreOps []teastoregrpc.GRPCOperation) []GRPCOperation {
+	result := make([]GRPCOperation, len(teastoreOps))
+	for i, op := range teastoreOps {
+		result[i] = GRPCOperation{
+			ServiceName:   op.ServiceName,
+			RPCSystem:     op.RPCSystem,
+			RPCService:    op.RPCService,
+			RPCMethod:     op.RPCMethod,
+			StatusCode:    op.StatusCode,
+			ServerAddress: op.ServerAddress,
+			ServerPort:    op.ServerPort,
+			SpanKind:      op.SpanKind,
 		}
 	}
 	return result

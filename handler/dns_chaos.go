@@ -2,11 +2,9 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,16 +41,10 @@ func (s *DNSErrorSpec) Create(cli cli.Client, opts ...Option) (string, error) {
 	ns := conf.Namespace
 	system := conf.System
 
-	endpoints, err := resourcelookup.GetSystemCache(system).GetAllDNSEndpoints()
+	endpointPair, err := getDNSEndpointByIndex(system, s.DNSEndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get DNS endpoints: %w", err)
+		return "", err
 	}
-
-	if s.DNSEndpointIdx < 0 || s.DNSEndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.DNSEndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.DNSEndpointIdx]
 	serviceName := endpointPair.AppName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
@@ -92,16 +84,10 @@ func (s *DNSRandomSpec) Create(cli cli.Client, opts ...Option) (string, error) {
 	ns := conf.Namespace
 	system := conf.System
 
-	endpoints, err := resourcelookup.GetSystemCache(system).GetAllDNSEndpoints()
+	endpointPair, err := getDNSEndpointByIndex(system, s.DNSEndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get DNS endpoints: %w", err)
+		return "", err
 	}
-
-	if s.DNSEndpointIdx < 0 || s.DNSEndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.DNSEndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.DNSEndpointIdx]
 	serviceName := endpointPair.AppName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")

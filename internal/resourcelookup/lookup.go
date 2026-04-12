@@ -16,6 +16,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Compatibility wrappers
+
+// GetAllAppLabels returns app labels for the current system.
+func GetAllAppLabels(namespace, key string) ([]string, error) {
+	return GetSystemCache(systemconfig.GetCurrentSystem()).GetAllAppLabels(context.Background(), namespace, key)
+}
+
+// GetAllContainers returns container info for the current system.
+func GetAllContainers(namespace string) ([]ContainerInfo, error) {
+	return GetSystemCache(systemconfig.GetCurrentSystem()).GetAllContainers(context.Background(), namespace)
+}
+
 // AppMethodPair represents a flattened app+method combination
 type AppMethodPair struct {
 	AppName    string `json:"app_name"`
@@ -156,13 +168,28 @@ func (s *systemCache) GetAllAppLabels(ctx context.Context, namespace string, key
 	}
 
 	labels, err := client.GetLabels(ctx, namespace, key)
-	logrus.Debugf("Fetched labels for namespace %s with key %s: %v", namespace, key, labels)
-	if err != nil {
-		return nil, err
+	if err != nil || len(labels) == 0 {
+		fallback := serviceendpoints.GetAllServices()
+		if len(fallback) == 0 {
+			if err != nil {
+				return nil, err
+			}
+			return nil, nil
+		}
+
+		sort.Strings(fallback)
+		s.appLabels[key] = fallback
+		if err != nil {
+			logrus.Warnf("Failed to fetch labels for namespace %s with key %s, fallback to static services: %v", namespace, key, err)
+		} else {
+			logrus.Warnf("No labels found for namespace %s with key %s, fallback to static services", namespace, key)
+		}
+		return fallback, nil
 	}
 
-	// Sort alphabetically
+	logrus.Debugf("Fetched labels for namespace %s with key %s: %v", namespace, key, labels)
 	sort.Strings(labels)
+	s.appLabels[key] = labels
 	return labels, nil
 }
 

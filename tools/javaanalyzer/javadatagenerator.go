@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
 )
 
@@ -137,43 +139,6 @@ func GetAllServices() []string {
 }
 `
 
-// TrainTicket service directories
-var trainTicketServiceDirs = []string{
-	"ts-admin-basic-info-service", "ts-auth-service", "ts-consign-service",
-	"ts-gateway-service", "ts-preserve-other-service", "ts-seat-service",
-	"ts-travel2-service", "ts-admin-order-service", "ts-basic-service",
-	"ts-contacts-service", "ts-inside-payment-service", "ts-preserve-service",
-	"ts-security-service", "ts-travel-plan-service", "ts-admin-route-service",
-	"ts-cancel-service", "ts-delivery-service", "ts-notification-service",
-	"ts-price-service", "ts-station-food-service", "ts-travel-service",
-	"ts-admin-travel-service", "ts-execute-service",
-	"ts-order-other-service", "ts-rebook-service", "ts-station-service",
-	"ts-user-service", "ts-admin-user-service", "ts-config-service",
-	"ts-food-delivery-service", "ts-order-service", "ts-route-plan-service",
-	"ts-train-food-service", "ts-verification-code-service", "ts-assurance-service",
-	"ts-consign-price-service", "ts-food-service", "ts-payment-service",
-	"ts-route-service", "ts-train-service", "ts-wait-order-service",
-}
-
-// OtelDemo service directories - these are under src/ subdirectory
-var otelDemoServiceDirs = []string{
-	"ad", // AdService (Java)
-}
-
-// OtelDemo source subdirectory
-const otelDemoSrcSubdir = "src"
-
-// SockShop service directories
-var sockShopServiceDirs = []string{
-	"carts",
-	"catalog",
-	"orders",
-	"payment",
-	"shipping",
-	"users",
-}
-
-// TeaStore service directories (under services/ subdirectory)
 var teaStoreServiceDirs = []string{
 	"tools.descartes.teastore.auth",
 	"tools.descartes.teastore.image",
@@ -183,37 +148,135 @@ var teaStoreServiceDirs = []string{
 	"tools.descartes.teastore.webui",
 }
 
-// TeaStore source subdirectory
-const teaStoreSrcSubdir = "services"
-
-// GetServiceDirsForSystem returns the list of service directories for the current system
-func GetServiceDirsForSystem() []string {
-	switch systemconfig.GetCurrentSystem() {
-	case systemconfig.SystemTrainTicket:
-		return trainTicketServiceDirs
-	case systemconfig.SystemOtelDemo:
-		return otelDemoServiceDirs
-	case systemconfig.SystemSockShop:
-		return sockShopServiceDirs
-	case systemconfig.SystemTeaStore:
-		return teaStoreServiceDirs
-	default:
-		return nil
+func discoverServicePaths(basePath string) ([]string, error) {
+	buildFiles := map[string]struct{}{
+		"pom.xml":          {},
+		"build.gradle":     {},
+		"build.gradle.kts": {},
 	}
+
+	candidates := make(map[string]struct{})
+	err := filepath.WalkDir(basePath, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+
+		if d.IsDir() {
+			name := d.Name()
+			if name == ".git" || name == "node_modules" || name == "vendor" || name == "build" || name == "target" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		if _, ok := buildFiles[d.Name()]; ok {
+			candidates[filepath.Dir(path)] = struct{}{}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	servicePaths := make([]string, 0, len(candidates))
+	for moduleDir := range candidates {
+		if hasJavaSources(moduleDir) {
+			servicePaths = append(servicePaths, moduleDir)
+		}
+	}
+
+	sort.Strings(servicePaths)
+
+	leafPaths := make([]string, 0, len(servicePaths))
+	for i, p := range servicePaths {
+		isParent := false
+		prefix := p + string(os.PathSeparator)
+		for j, q := range servicePaths {
+			if i == j {
+				continue
+			}
+			if strings.HasPrefix(q, prefix) {
+				isParent = true
+				break
+			}
+		}
+		if !isParent {
+			leafPaths = append(leafPaths, p)
+		}
+	}
+
+	return leafPaths, nil
 }
 
-// GetServiceBasePath returns the base path for services based on the system type
-// For OtelDemo, services are under src/ subdirectory
-// For TeaStore, services are under services/ subdirectory
-func GetServiceBasePath(basePath string) string {
-	switch systemconfig.GetCurrentSystem() {
-	case systemconfig.SystemOtelDemo:
-		return filepath.Join(basePath, otelDemoSrcSubdir)
-	case systemconfig.SystemTeaStore:
-		return filepath.Join(basePath, teaStoreSrcSubdir)
-	default:
-		return basePath
+func hasJavaSources(moduleDir string) bool {
+	mainJavaDir := filepath.Join(moduleDir, "src", "main", "java")
+	if info, err := os.Stat(mainJavaDir); err == nil && info.IsDir() {
+		return true
 	}
+
+	hasJava := false
+	_ = filepath.WalkDir(moduleDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil || hasJava {
+			return nil
+		}
+
+		if d.IsDir() {
+			name := d.Name()
+			if name == ".git" || name == "node_modules" || name == "vendor" || name == "build" || name == "target" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		if strings.HasSuffix(d.Name(), ".java") {
+			hasJava = true
+		}
+
+		return nil
+	})
+
+	return hasJava
+}
+
+func filterServicePathsByNetworkServices(servicePaths []string) []string {
+	networkServices := serviceendpoints.GetAllServices()
+	if len(networkServices) == 0 {
+		return servicePaths
+	}
+
+	allowed := make(map[string]struct{}, len(networkServices))
+	for _, serviceName := range networkServices {
+		allowed[serviceName] = struct{}{}
+	}
+
+	filtered := make([]string, 0, len(servicePaths))
+	for _, servicePath := range servicePaths {
+		serviceName := normalizeServiceName(filepath.Base(servicePath))
+		if _, ok := allowed[serviceName]; ok {
+			filtered = append(filtered, servicePath)
+		}
+	}
+
+	return filtered
+}
+
+func normalizeServiceName(rawName string) string {
+	if rawName == "" {
+		return rawName
+	}
+
+	if systemconfig.IsTeaStore() {
+		const teaStoreModulePrefix = "tools.descartes.teastore."
+		if strings.HasPrefix(rawName, teaStoreModulePrefix) {
+			suffix := strings.TrimPrefix(rawName, teaStoreModulePrefix)
+			if suffix != "" {
+				return "teastore-" + suffix
+			}
+		}
+	}
+
+	return rawName
 }
 
 // getPackageNameFromPath extracts the package name from the output file path
@@ -249,27 +312,48 @@ func FilterClassMethods(entries []ClassMethodEntry) []ClassMethodEntry {
 // GenerateJavaClassMethodsFile analyzes Java services and generates a Go file
 // with class-method pairs for each service
 func GenerateJavaClassMethodsFile(servicesBasePath string, outputFilePath string) error {
-	// Get service directories based on current system
-	serviceDirs := GetServiceDirsForSystem()
+	var (
+		basePath     = servicesBasePath
+		servicePaths []string
+		err          error
+	)
 
-	// Get the correct base path (OtelDemo has src/ subdirectory)
-	basePath := GetServiceBasePath(servicesBasePath)
-
-	// Prepare full paths for analysis
-	var servicePaths []string
-	for _, serviceDir := range serviceDirs {
-		servicePath := filepath.Join(basePath, serviceDir)
-		if info, err := os.Stat(servicePath); err == nil && info.IsDir() {
-			servicePaths = append(servicePaths, servicePath)
-			fmt.Printf("Found service directory: %s\n", servicePath)
-		} else {
-			fmt.Printf("Service directory not found or not a directory: %s\n", servicePath)
+	if systemconfig.IsTeaStore() {
+		basePath = filepath.Join(servicesBasePath, "services")
+		servicePaths = make([]string, 0, len(teaStoreServiceDirs))
+		for _, serviceDir := range teaStoreServiceDirs {
+			servicePath := filepath.Join(basePath, serviceDir)
+			if info, statErr := os.Stat(servicePath); statErr == nil && info.IsDir() {
+				servicePaths = append(servicePaths, servicePath)
+			}
 		}
+	} else if systemconfig.IsOtelDemo() {
+		basePath = filepath.Join(servicesBasePath, "src")
+		if info, statErr := os.Stat(basePath); statErr != nil || !info.IsDir() {
+			return fmt.Errorf("oteldemo services root not found: %s", basePath)
+		}
+		servicePaths, err = discoverServicePaths(basePath)
+		if err != nil {
+			return fmt.Errorf("failed to discover oteldemo service directories: %w", err)
+		}
+	} else {
+		servicePaths, err = discoverServicePaths(basePath)
+		if err != nil {
+			return fmt.Errorf("failed to discover service directories: %w", err)
+		}
+	}
+
+	for _, servicePath := range servicePaths {
+		fmt.Printf("Found service directory: %s\n", servicePath)
+	}
+
+	servicePaths = filterServicePathsByNetworkServices(servicePaths)
+	for _, servicePath := range servicePaths {
+		fmt.Printf("Selected service directory: %s\n", servicePath)
 	}
 
 	if len(servicePaths) == 0 {
 		fmt.Printf("Warning: No service directories found in %s\n", basePath)
-		fmt.Printf("Expected directories: %v\n", serviceDirs)
 	}
 
 	// Analyze Java services
@@ -283,7 +367,7 @@ func GenerateJavaClassMethodsFile(servicesBasePath string, outputFilePath string
 	// Transform path results to service class methods
 	var services []ServiceClassMethods
 	for _, result := range pathResults {
-		serviceName := result.PathName
+		serviceName := normalizeServiceName(result.PathName)
 
 		// Filter out unwanted classes
 		filteredMethods := FilterClassMethods(result.Methods)

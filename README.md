@@ -5,11 +5,24 @@
 # Build the generator
 go build -o bin/generate-java-methods cmd/javaanalyzer/main.go
 
-# Run the generator with path to Java services
-./bin/generate-java-methods --services /path/to/java/services
+# TrainTicket (ts)
+./bin/generate-java-methods --system ts --services ../train-ticket
+
+# OpenTelemetry Demo (otel-demo)
+./bin/generate-java-methods --system otel-demo --services ../opentelemetry-demo
+
+# TeaStore (teastore)
+./bin/generate-java-methods --system teastore --services ../TeaStore
+
+# Sock Shop (sockshop)
+./bin/generate-java-methods --system sockshop --services ../coherence-helidon-sockshop-sample
+
+# Online Boutique (ob)
+./bin/generate-java-methods --system ob --services ../microservices-demo
 ```
 
-This will generate a file in `internal/javaclassmethods/javaclassmethods.go` with all method information.
+This generates system-specific files under `internal/<system>/javaclassmethods/javaclassmethods.go`
+and runtime mutator files under `internal/<system>/mutatorconfig/mutatorconfig.go`.
 
 ## Analyzing service endpoint
 

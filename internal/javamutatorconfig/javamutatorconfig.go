@@ -4,29 +4,21 @@ package javamutatorconfig
 import (
 	"sort"
 
+	obmutator "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/mutatorconfig"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
 
 	oteldemomutator "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/mutatorconfig"
+	sockshopmutator "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/mutatorconfig"
+	teastoremutator "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/mutatorconfig"
 	tsmutator "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/mutatorconfig"
 )
 
-// MutationSpec defines one runtime mutation option.
-type MutationSpec struct {
-	Type        int    `json:"type"`
-	TypeName    string `json:"typeName"`
-	From        string `json:"from,omitempty"`
-	To          string `json:"to,omitempty"`
-	Strategy    string `json:"strategy,omitempty"`
-	Description string `json:"description,omitempty"`
-}
+// MutationSpec is an alias to the shared runtime mutator type.
+type MutationSpec = resourcetypes.RuntimeMutatorMutationSpec
 
-// ValidInjection is one flattened valid injection target.
-type ValidInjection struct {
-	AppName    string       `json:"app_name"`
-	ClassName  string       `json:"class_name"`
-	MethodName string       `json:"method_name"`
-	Mutation   MutationSpec `json:"mutation"`
-}
+// ValidInjection is an alias to the shared flattened runtime mutator target type.
+type ValidInjection = resourcetypes.RuntimeMutatorTarget
 
 // ListAllValidInjections returns all valid runtime mutator targets for current system.
 func ListAllValidInjections() []ValidInjection {
@@ -79,8 +71,14 @@ func getAllServicesBySystem() []string {
 		return tsmutator.GetAllServices()
 	case systemconfig.SystemOtelDemo:
 		return oteldemomutator.GetAllServices()
+	case systemconfig.SystemOnlineBoutique:
+		return obmutator.GetAllServices()
+	case systemconfig.SystemSockShop:
+		return sockshopmutator.GetAllServices()
+	case systemconfig.SystemTeaStore:
+		return teastoremutator.GetAllServices()
 	default:
-		return tsmutator.GetAllServices()
+		return []string{}
 	}
 }
 
@@ -115,17 +113,41 @@ func getMutatorConfigByService(service string) []methodMutationEntry {
 			}
 		}
 		return result
-	default:
-		entries := tsmutator.GetMutatorConfigByService(service)
+	case systemconfig.SystemOnlineBoutique:
+		entries := obmutator.GetMutatorConfigByService(service)
 		result := make([]methodMutationEntry, len(entries))
 		for i, e := range entries {
 			result[i] = methodMutationEntry{
 				ClassName:  e.ClassName,
 				MethodName: e.MethodName,
-				Mutations:  convertTSMutations(e.Mutations),
+				Mutations:  convertOBMutations(e.Mutations),
 			}
 		}
 		return result
+	case systemconfig.SystemSockShop:
+		entries := sockshopmutator.GetMutatorConfigByService(service)
+		result := make([]methodMutationEntry, len(entries))
+		for i, e := range entries {
+			result[i] = methodMutationEntry{
+				ClassName:  e.ClassName,
+				MethodName: e.MethodName,
+				Mutations:  convertSockShopMutations(e.Mutations),
+			}
+		}
+		return result
+	case systemconfig.SystemTeaStore:
+		entries := teastoremutator.GetMutatorConfigByService(service)
+		result := make([]methodMutationEntry, len(entries))
+		for i, e := range entries {
+			result[i] = methodMutationEntry{
+				ClassName:  e.ClassName,
+				MethodName: e.MethodName,
+				Mutations:  convertTeaStoreMutations(e.Mutations),
+			}
+		}
+		return result
+	default:
+		return []methodMutationEntry{}
 	}
 }
 
@@ -145,6 +167,51 @@ func convertTSMutations(in []tsmutator.MutationSpec) []MutationSpec {
 }
 
 func convertOtelMutations(in []oteldemomutator.MutationSpec) []MutationSpec {
+	out := make([]MutationSpec, len(in))
+	for i, m := range in {
+		out[i] = MutationSpec{
+			Type:        m.Type,
+			TypeName:    m.TypeName,
+			From:        m.From,
+			To:          m.To,
+			Strategy:    m.Strategy,
+			Description: m.Description,
+		}
+	}
+	return out
+}
+
+func convertOBMutations(in []obmutator.MutationSpec) []MutationSpec {
+	out := make([]MutationSpec, len(in))
+	for i, m := range in {
+		out[i] = MutationSpec{
+			Type:        m.Type,
+			TypeName:    m.TypeName,
+			From:        m.From,
+			To:          m.To,
+			Strategy:    m.Strategy,
+			Description: m.Description,
+		}
+	}
+	return out
+}
+
+func convertSockShopMutations(in []sockshopmutator.MutationSpec) []MutationSpec {
+	out := make([]MutationSpec, len(in))
+	for i, m := range in {
+		out[i] = MutationSpec{
+			Type:        m.Type,
+			TypeName:    m.TypeName,
+			From:        m.From,
+			To:          m.To,
+			Strategy:    m.Strategy,
+			Description: m.Description,
+		}
+	}
+	return out
+}
+
+func convertTeaStoreMutations(in []teastoremutator.MutationSpec) []MutationSpec {
 	out := make([]MutationSpec, len(in))
 	for i, m := range in {
 		out[i] = MutationSpec{

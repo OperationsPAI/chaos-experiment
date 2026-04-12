@@ -221,6 +221,9 @@ type GroundtruthProvider interface {
 }
 
 var SpecMap = map[ChaosType]any{
+	PodKill:                  PodKillSpec{},
+	PodFailure:               PodFailureSpec{},
+	ContainerKill:            ContainerKillSpec{},
 	CPUStress:                CPUStressChaosSpec{},
 	MemoryStress:             MemoryStressChaosSpec{},
 	HTTPRequestAbort:         HTTPRequestAbortSpec{},
@@ -494,12 +497,22 @@ func parseInjection(ctx context.Context, instance Injection) (map[string]any, er
 				if err != nil || len(labels) == 0 {
 					return nil, err
 				}
+				if int(index) < 0 || int(index) >= len(labels) {
+					return nil, fmt.Errorf("app index out of range: %d (max: %d)", index, len(labels)-1)
+				}
 
 				value = map[string]any{"app_name": labels[index]}
 			case keyMethod:
 				methods, err := systemCache.GetAllJVMMethods()
 				if err != nil {
 					return nil, err
+				}
+				if len(methods) == 0 {
+					value = map[string]any{}
+					break
+				}
+				if int(index) < 0 || int(index) >= len(methods) {
+					return nil, fmt.Errorf("method index out of range: %d (max: %d)", index, len(methods)-1)
 				}
 
 				value = methods[index]
@@ -508,12 +521,26 @@ func parseInjection(ctx context.Context, instance Injection) (map[string]any, er
 				if err != nil {
 					return nil, err
 				}
+				if len(targets) == 0 {
+					value = map[string]any{}
+					break
+				}
+				if int(index) < 0 || int(index) >= len(targets) {
+					return nil, fmt.Errorf("runtime mutator target index out of range: %d (max: %d)", index, len(targets)-1)
+				}
 
 				value = targets[index]
 			case keyEndpoint:
 				endpoints, err := systemCache.GetAllHTTPEndpoints()
 				if err != nil {
 					return nil, err
+				}
+				if len(endpoints) == 0 {
+					value = map[string]any{}
+					break
+				}
+				if int(index) < 0 || int(index) >= len(endpoints) {
+					return nil, fmt.Errorf("endpoint index out of range: %d (max: %d)", index, len(endpoints)-1)
 				}
 
 				value = endpoints[index]
@@ -525,12 +552,26 @@ func parseInjection(ctx context.Context, instance Injection) (map[string]any, er
 				if err != nil {
 					return nil, err
 				}
+				if len(networkpairs) == 0 {
+					value = map[string]any{}
+					break
+				}
+				if int(index) < 0 || int(index) >= len(networkpairs) {
+					return nil, fmt.Errorf("network pair index out of range: %d (max: %d)", index, len(networkpairs)-1)
+				}
 
 				value = networkpairs[index]
 			case keyContainer:
 				containers, err := systemCache.GetAllContainers(ctx, namespace)
 				if err != nil {
 					return nil, err
+				}
+				if len(containers) == 0 {
+					value = map[string]any{}
+					break
+				}
+				if int(index) < 0 || int(index) >= len(containers) {
+					return nil, fmt.Errorf("container index out of range: %d (max: %d)", index, len(containers)-1)
 				}
 
 				value = containers[index]
@@ -539,12 +580,26 @@ func parseInjection(ctx context.Context, instance Injection) (map[string]any, er
 				if err != nil {
 					return nil, err
 				}
+				if len(endpoints) == 0 {
+					value = map[string]any{}
+					break
+				}
+				if int(index) < 0 || int(index) >= len(endpoints) {
+					return nil, fmt.Errorf("DNS endpoint index out of range: %d (max: %d)", index, len(endpoints)-1)
+				}
 
 				value = endpoints[index]
 			case keyDatabase:
 				operations, err := systemCache.GetAllDatabaseOperations()
 				if err != nil {
 					return nil, err
+				}
+				if len(operations) == 0 {
+					value = map[string]any{}
+					break
+				}
+				if int(index) < 0 || int(index) >= len(operations) {
+					return nil, fmt.Errorf("database index out of range: %d (max: %d)", index, len(operations)-1)
 				}
 
 				value = operations[index]
