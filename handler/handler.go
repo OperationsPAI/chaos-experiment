@@ -5,68 +5,47 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"sort"
 
 	"github.com/LGU-SE-Internal/chaos-experiment/client"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
 	"github.com/LGU-SE-Internal/chaos-experiment/utils"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type ChaosType int
+type SystemType systemconfig.SystemType
 
-type NamespaceInfo struct {
-	Namespace string
-	Count     int
-}
-
-var (
-	NamespacePrefixs   []string
-	NamespaceTargetMap map[string]int
-	TargetLabelKey     string
+const (
+	SystemTrainTicket        = SystemType(systemconfig.SystemTrainTicket)
+	SystemOtelDemo           = SystemType(systemconfig.SystemOtelDemo)
+	SystemMediaMicroservices = SystemType(systemconfig.SystemMediaMicroservices)
+	SystemHotelReservation   = SystemType(systemconfig.SystemHotelReservation)
+	SystemSocialNetwork      = SystemType(systemconfig.SystemSocialNetwork)
+	SystemOnlineBoutique     = SystemType(systemconfig.SystemOnlineBoutique)
 )
 
-func InitTargetConfig(namespaceTargetMap map[string]int, targetLabelKey string) error {
-	NamespaceTargetMap = namespaceTargetMap
-	TargetLabelKey = targetLabelKey
-
-	allNamespaces, err := client.ListNamespaces()
-	if err != nil {
-		return err
-	}
-
-	allNamespaceMap := make(map[string]struct{}, len(allNamespaces))
-	for _, ns := range allNamespaces {
-		allNamespaceMap[ns] = struct{}{}
-	}
-
-	TargetLabelKey = targetLabelKey
-	namespacePrefixs := make([]string, 0, len(namespaceTargetMap))
-	for ns, count := range namespaceTargetMap {
-		for i := range count {
-			namespace := fmt.Sprintf("%s%d", ns, i)
-			_, exists := allNamespaceMap[namespace]
-			if !exists {
-				return fmt.Errorf("namespace %s does not exist in the cluster", namespace)
-			}
-		}
-
-		namespacePrefixs = append(namespacePrefixs, ns)
-	}
-
-	sort.Strings(namespacePrefixs)
-	NamespacePrefixs = namespacePrefixs
-
-	resourcelookup.InitCaches()
-	for _, ns := range namespacePrefixs {
-		namespace := fmt.Sprintf("%s%d", ns, DefaultStartIndex)
-		if err := resourcelookup.PreloadCaches(namespace, targetLabelKey); err != nil {
-			return fmt.Errorf("failed to preload caches of namespace: %v", err)
-		}
-	}
-
-	return nil
+// String returns the string representation of SystemType
+func (s SystemType) String() string {
+	return systemconfig.SystemType(s).String()
 }
+
+// IsValid checks if the SystemType is valid
+func (s SystemType) IsValid() bool {
+	_, err := systemconfig.ParseSystemType(s.String())
+	return err == nil
+}
+
+// GetAllSystemTypes returns all valid system types
+func GetAllSystemTypes() []SystemType {
+	systems := systemconfig.GetAllSystemTypes()
+	result := make([]SystemType, len(systems))
+	for i, sys := range systems {
+		result[i] = SystemType(sys)
+	}
+	return result
+}
+
+type ChaosType int
 
 const (
 	// PodChaos
@@ -113,6 +92,7 @@ const (
 	JVMMemoryStress
 	JVMMySQLLatency
 	JVMMySQLException
+	JVMRuntimeMutator
 )
 
 // Define ChaosType to name mapping
@@ -148,6 +128,7 @@ var ChaosTypeMap = map[ChaosType]string{
 	JVMMemoryStress:          "JVMMemoryStress",
 	JVMMySQLLatency:          "JVMMySQLLatency",
 	JVMMySQLException:        "JVMMySQLException",
+	JVMRuntimeMutator:        "JVMRuntimeMutator",
 }
 
 var ChaosNameMap = map[string]ChaosType{
@@ -182,9 +163,10 @@ var ChaosNameMap = map[string]ChaosType{
 	"JVMMemoryStress":          JVMMemoryStress,
 	"JVMMySQLLatency":          JVMMySQLLatency,
 	"JVMMySQLException":        JVMMySQLException,
+	"JVMRuntimeMutator":        JVMRuntimeMutator,
 }
 
-// GetChaosTypeName 根据 ChaosType 获取名称
+// GetChaosTypeName returns the name of the given ChaosType
 func GetChaosTypeName(c ChaosType) string {
 	if name, ok := ChaosTypeMap[c]; ok {
 		return name
@@ -197,6 +179,7 @@ type Conf struct {
 	Context     context.Context
 	Labels      map[string]string
 	Namespace   string
+	System      systemconfig.SystemType
 }
 type Option func(*Conf)
 
@@ -224,11 +207,17 @@ func WithNs(ns string) Option {
 	}
 }
 
+func WithSystem(system systemconfig.SystemType) Option {
+	return func(c *Conf) {
+		c.System = system
+	}
+}
+
 type Injection interface {
 	Create(cli cli.Client, opt ...Option) (string, error)
 }
 type GroundtruthProvider interface {
-	GetGroundtruth() (Groundtruth, error)
+	GetGroundtruth(ctx context.Context) (Groundtruth, error)
 }
 
 var SpecMap = map[ChaosType]any{
@@ -260,6 +249,7 @@ var SpecMap = map[ChaosType]any{
 	JVMMemoryStress:          JVMMemoryStressSpec{},
 	JVMMySQLLatency:          JVMMySQLLatencySpec{},
 	JVMMySQLException:        JVMMySQLExceptionSpec{},
+	JVMRuntimeMutator:        JVMRuntimeMutatorSpec{},
 }
 
 var ChaosHandlers = map[ChaosType]Injection{
@@ -294,6 +284,7 @@ var ChaosHandlers = map[ChaosType]Injection{
 	JVMMemoryStress:          &JVMMemoryStressSpec{},
 	JVMMySQLLatency:          &JVMMySQLLatencySpec{},
 	JVMMySQLException:        &JVMMySQLExceptionSpec{},
+	JVMRuntimeMutator:        &JVMRuntimeMutatorSpec{},
 }
 
 type InjectionConf struct {
@@ -328,27 +319,35 @@ type InjectionConf struct {
 	JVMMemoryStress          *JVMMemoryStressSpec          `range:"0-3"`
 	JVMMySQLLatency          *JVMMySQLLatencySpec          `range:"0-3"`
 	JVMMySQLException        *JVMMySQLExceptionSpec        `range:"0-2"`
+	JVMRuntimeMutator        *JVMRuntimeMutatorSpec        `range:"0-3"`
 }
 
-func (ic *InjectionConf) Create(ctx context.Context, namespace string, annotations map[string]string, labels map[string]string) (string, error) {
-	activeField, err := ic.getActiveField()
+func (ic *InjectionConf) GetDisplayConfig(ctx context.Context) (map[string]any, error) {
+	instance, err := ic.getActiveInjection()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	instance := activeField.Interface().(Injection)
-	name, err := instance.Create(
-		client.NewK8sClient(),
-		WithAnnotations(annotations),
-		WithContext(ctx),
-		WithLabels(labels),
-		WithNs(namespace),
-	)
+	parsed, err := parseInjection(ctx, instance)
 	if err != nil {
-		return "", fmt.Errorf("failed to inject chaos for %T: %w", instance, err)
+		return nil, err
 	}
 
-	return name, nil
+	return parsed, nil
+}
+
+func (ic *InjectionConf) GetGroundtruth(ctx context.Context) (Groundtruth, error) {
+	instance, err := ic.getActiveInjection()
+	if err != nil {
+		return Groundtruth{}, err
+	}
+
+	// Check if the injection supports GetGroundtruth
+	if provider, ok := instance.(GroundtruthProvider); ok {
+		return provider.GetGroundtruth(ctx)
+	}
+
+	return Groundtruth{}, fmt.Errorf("injection does not support groundtruth calculation")
 }
 
 func (ic *InjectionConf) getActiveField() (reflect.Value, error) {
@@ -379,32 +378,102 @@ func (ic *InjectionConf) getActiveInjection() (Injection, error) {
 	return activeField.Interface().(Injection), nil
 }
 
-func (ic *InjectionConf) GetDisplayConfig() (map[string]any, error) {
-	instance, err := ic.getActiveInjection()
-	if err != nil {
-		return nil, err
+func BatchCreate(ctx context.Context, confs []InjectionConf, system SystemType, namespace string, annotations, labels map[string]string) ([]string, error) {
+	if len(confs) == 0 {
+		return nil, fmt.Errorf("no injection configurations provided")
 	}
 
+	// Validate system type
+	if !system.IsValid() {
+		return nil, fmt.Errorf("invalid system type: %s", system)
+	}
+
+	systemconfig.SetCurrentSystem(systemconfig.SystemType(system))
+
+	type result struct {
+		name  string
+		err   error
+		index int
+	}
+
+	resultChan := make(chan result, len(confs))
+	for idx, conf := range confs {
+		go func(ic InjectionConf, i int) {
+			injection, err := ic.getActiveInjection()
+			if err != nil {
+				resultChan <- result{err: fmt.Errorf("failed to get active injection for conf at index %d: %w", i, err), index: i}
+			}
+
+			name, err := injection.Create(
+				client.GetK8sClient(),
+				WithAnnotations(annotations),
+				WithContext(ctx),
+				WithLabels(labels),
+				WithNs(namespace),
+				WithSystem(systemconfig.GetCurrentSystem()),
+			)
+			if err != nil {
+				resultChan <- result{err: fmt.Errorf("failed to inject chaos for %v: %w", injection, err), index: i}
+			} else {
+				resultChan <- result{name: name, index: i}
+			}
+		}(conf, idx)
+	}
+
+	results := make([]result, len(confs))
+	for i := 0; i < len(confs); i++ {
+		res := <-resultChan
+		results[res.index] = res
+	}
+
+	names := make([]string, 0, len(confs))
+	var errs []error
+
+	for _, res := range results {
+		if res.err != nil {
+			errs = append(errs, res.err)
+		} else {
+			names = append(names, res.name)
+		}
+	}
+
+	if len(errs) > 0 {
+		return names, fmt.Errorf("some injections failed: %v", errs)
+	}
+
+	return names, nil
+}
+
+func parseInjection(ctx context.Context, instance Injection) (map[string]any, error) {
 	instanceValue := reflect.ValueOf(instance).Elem()
 	instanceType := instanceValue.Type()
 
 	result := make(map[string]any, instanceValue.NumField())
 
-	var prefix string
+	var system systemconfig.SystemType
 	var endpointMethod string
+
+	systems := systemconfig.GetAllSystemTypes()
 	for i := range instanceValue.NumField() {
-		if instanceType.Field(i).Name == keyNamespace {
+		if instanceType.Field(i).Name == keySystem {
 			index, err := getIntValue(instanceValue.Field(i))
 			if err != nil {
 				return nil, err
 			}
 
-			if index >= 0 && int(index) < len(NamespacePrefixs) {
-				prefix = NamespacePrefixs[index]
+			if index >= 0 && int(index) < len(systems) {
+				system = systems[index]
 				break
 			}
 		}
 	}
+
+	namespace, err := systemconfig.GetNamespaceByIndex(system, defaultStartIndex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get namespace for system %s: %v", system, err)
+	}
+
+	systemCache := resourcelookup.GetSystemCache(system)
 
 	for i := range instanceValue.NumField() {
 		key := utils.ToSnakeCase(instanceType.Field(i).Name)
@@ -417,87 +486,68 @@ func (ic *InjectionConf) GetDisplayConfig() (map[string]any, error) {
 		var value any
 		switch i {
 		case 1:
-			result[key] = prefix
+			result[key] = system.String()
 		case 2:
 			switch instanceType.Field(i).Name {
 			case keyApp:
-				namespace := fmt.Sprintf("%s%d", prefix, DefaultStartIndex)
-				labels, err := getAllAppLabels(namespace)
+				labels, err := systemCache.GetAllAppLabels(ctx, namespace, defaultAppLabel)
 				if err != nil || len(labels) == 0 {
 					return nil, err
 				}
 
 				value = map[string]any{"app_name": labels[index]}
 			case keyMethod:
-				methods, err := getAllJVMMethodInfos()
+				methods, err := systemCache.GetAllJVMMethods()
 				if err != nil {
 					return nil, err
 				}
 
-				method := methods[index]
-				value = map[string]any{
-					"app_name":    method.ServiceName,
-					"class_name":  method.ClassName,
-					"method_name": method.MethodName,
+				value = methods[index]
+			case keyTarget:
+				targets, err := systemCache.GetAllJVMRuntimeMutatorTargets()
+				if err != nil {
+					return nil, err
 				}
+
+				value = targets[index]
 			case keyEndpoint:
-				endpoints, err := getAllHTTPEndpointInfos()
+				endpoints, err := systemCache.GetAllHTTPEndpoints()
 				if err != nil {
 					return nil, err
 				}
 
-				ep := endpoints[index]
-				value = map[string]any{
-					"app_name":       ep.ServiceName,
-					"route":          ep.Route,
-					"method":         ep.Method,
-					"server_address": ep.ServerAddress,
-					"server_port":    ep.ServerPort,
-					"span_name":      ep.SpanName,
-				}
+				value = endpoints[index]
 
 				endpointMethod = endpoints[index].Method
 
 			case keyNetworkPair:
-				networkpairs, err := getAllNetworkPairs()
+				networkpairs, err := systemCache.GetAllNetworkPairs()
 				if err != nil {
 					return nil, err
 				}
 
 				value = networkpairs[index]
 			case keyContainer:
-				namespace := fmt.Sprintf("%s%d", prefix, DefaultStartIndex)
-				containers, err := getAllContainerInfos(namespace)
+				containers, err := systemCache.GetAllContainers(ctx, namespace)
 				if err != nil {
 					return nil, err
 				}
 
 				value = containers[index]
 			case keyDNSEndpoint:
-				endpoints, err := getAllDNSEndpoints()
+				endpoints, err := systemCache.GetAllDNSEndpoints()
 				if err != nil {
 					return nil, err
 				}
 
-				ep := endpoints[index]
-				value = map[string]any{
-					"app_name":   ep.ServiceName,
-					"domain":     ep.Domain,
-					"span_names": ep.SpanNames,
-				}
+				value = endpoints[index]
 			case keyDatabase:
-				operations, err := getAllDatabaseInfos()
+				operations, err := systemCache.GetAllDatabaseOperations()
 				if err != nil {
 					return nil, err
 				}
 
-				op := operations[index]
-				value = map[string]any{
-					"app_name":       op.ServiceName,
-					"db_name":        op.DBName,
-					"table_name":     op.TableName,
-					"operation_type": op.Operation,
-				}
+				value = operations[index]
 			}
 
 			jsonData, err := json.Marshal(value)
@@ -531,20 +581,6 @@ func (ic *InjectionConf) GetDisplayConfig() (map[string]any, error) {
 	return result, nil
 }
 
-func (ic *InjectionConf) GetGroundtruth() (Groundtruth, error) {
-	instance, err := ic.getActiveInjection()
-	if err != nil {
-		return Groundtruth{}, err
-	}
-
-	// Check if the injection supports GetGroundtruth
-	if provider, ok := instance.(GroundtruthProvider); ok {
-		return provider.GetGroundtruth()
-	}
-
-	return Groundtruth{}, fmt.Errorf("injection does not support groundtruth calculation")
-}
-
 func getIntValue(field reflect.Value) (int64, error) {
 	switch field.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -559,7 +595,7 @@ type Pair struct {
 	Target string `json:"target"`
 }
 
-type Resources struct {
+type SystemResource struct {
 	AppLabels        []string `json:"app_labels"`
 	JVMAppNames      []string `json:"jvm_app_names"`
 	HTTPAppNames     []string `json:"http_app_names"`
@@ -569,19 +605,19 @@ type Resources struct {
 	ContainerNames   []string `json:"container_names"`
 }
 
-func (r *Resources) ToMap() map[string][]string {
+func (sr *SystemResource) ToMap() map[string][]string {
 	result := make(map[string][]string)
 
-	result["app_labels"] = r.AppLabels
-	result["jvm_app_names"] = r.JVMAppNames
-	result["http_app_names"] = r.HTTPAppNames
-	result["dns_app_names"] = r.DNSAppNames
-	result["database_app_names"] = r.DatabaseAppNames
-	result["container_names"] = r.ContainerNames
+	result["app_labels"] = sr.AppLabels
+	result["jvm_app_names"] = sr.JVMAppNames
+	result["http_app_names"] = sr.HTTPAppNames
+	result["dns_app_names"] = sr.DNSAppNames
+	result["database_app_names"] = sr.DatabaseAppNames
+	result["container_names"] = sr.ContainerNames
 
-	if len(r.NetworkPairs) > 0 {
+	if len(sr.NetworkPairs) > 0 {
 		var networkPairStrings []string
-		for _, pair := range r.NetworkPairs {
+		for _, pair := range sr.NetworkPairs {
 			networkPairStrings = append(networkPairStrings, fmt.Sprintf("%s->%s", pair.Source, pair.Target))
 		}
 
@@ -591,60 +627,51 @@ func (r *Resources) ToMap() map[string][]string {
 	return result
 }
 
-func (r *Resources) ToDeduplicatedMap() map[string][]string {
+func (sr *SystemResource) ToDeduplicatedMap() map[string][]string {
 	result := make(map[string][]string)
-	for key, value := range r.ToMap() {
+	for key, value := range sr.ToMap() {
 		result[key] = utils.RemoveDuplicates(value)
 	}
 
 	return result
 }
 
-type ResourceField struct {
-	IndexName string `json:"index_name"`
-	Name      string `json:"name"`
-}
-
-var keyResourceMap = map[string]string{
-	keyApp:         "app_labels",
-	keyMethod:      "jvm_app_names",
-	keyEndpoint:    "http_app_names",
-	keyNetworkPair: "network_pairs",
-	keyDNSEndpoint: "dns_app_names",
-	keyDatabase:    "database_app_names",
-	keyContainer:   "container_names",
-}
-
-func GetNsResources() (map[string]Resources, error) {
-	resourceMap := make(map[string]Resources, len(NamespacePrefixs))
-	for _, ns := range NamespacePrefixs {
-		namespace := fmt.Sprintf("%s%d", ns, DefaultStartIndex)
-		appLabels, err := getAllAppLabels(namespace)
+// GetSystemResourceMap retrieves system resources for all systems
+func GetSystemResourceMap(ctx context.Context) (map[SystemType]SystemResource, error) {
+	resourceMap := make(map[SystemType]SystemResource, len(systemconfig.GetAllSystemTypes()))
+	for _, system := range systemconfig.GetAllSystemTypes() {
+		systemCache := resourcelookup.GetSystemCache(system)
+		namespace, err := systemconfig.GetNamespaceByIndex(system, defaultStartIndex)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get app labels for namespace %s: %v", ns, err)
+			return nil, fmt.Errorf("failed to get namespace prefix for system %s: %v", system, err)
 		}
 
-		methods, err := getAllJVMMethodInfos()
+		appLabels, err := systemCache.GetAllAppLabels(ctx, namespace, defaultAppLabel)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get app labels namespace %s for system %s: %v", namespace, system, err)
+		}
+
+		methods, err := systemCache.GetAllJVMMethods()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get JVM methods: %v", err)
 		}
 
 		jvmAppNames := make([]string, 0, len(methods))
 		for _, method := range methods {
-			jvmAppNames = append(jvmAppNames, method.ServiceName)
+			jvmAppNames = append(jvmAppNames, method.AppName)
 		}
 
-		endpoints, err := getAllHTTPEndpointInfos()
+		endpoints, err := systemCache.GetAllHTTPEndpoints()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get HTTP endpoints: %v", err)
 		}
 
 		httpAppNames := make([]string, 0, len(endpoints))
 		for _, endpoint := range endpoints {
-			httpAppNames = append(httpAppNames, endpoint.ServiceName)
+			httpAppNames = append(httpAppNames, endpoint.AppName)
 		}
 
-		pairs, err := getAllNetworkPairs()
+		pairs, err := systemCache.GetAllNetworkPairs()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get network pairs: %v", err)
 		}
@@ -657,29 +684,29 @@ func GetNsResources() (map[string]Resources, error) {
 			})
 		}
 
-		dnsEndpoints, err := getAllDNSEndpoints()
+		dnsEndpoints, err := systemCache.GetAllDNSEndpoints()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get DNS endpoints: %v", err)
 		}
 
 		dnsAppNames := make([]string, 0, len(dnsEndpoints))
 		for _, endpoint := range dnsEndpoints {
-			dnsAppNames = append(dnsAppNames, endpoint.ServiceName)
+			dnsAppNames = append(dnsAppNames, endpoint.AppName)
 		}
 
-		operations, err := getAllDatabaseInfos()
+		operations, err := systemCache.GetAllDatabaseOperations()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get database operations: %v", err)
 		}
 
 		databaseAppNames := make([]string, 0, len(operations))
 		for _, operation := range operations {
-			databaseAppNames = append(databaseAppNames, operation.ServiceName)
+			databaseAppNames = append(databaseAppNames, operation.AppName)
 		}
 
-		containers, err := getAllContainerInfos(namespace)
+		containers, err := systemCache.GetAllContainers(ctx, namespace)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get containers for namespace %s: %v", ns, err)
+			return nil, fmt.Errorf("failed to get containers of namespace %s for system %s: %v", namespace, system, err)
 		}
 
 		containerNames := make([]string, 0, len(containers))
@@ -687,7 +714,7 @@ func GetNsResources() (map[string]Resources, error) {
 			containerNames = append(containerNames, container.AppLabel)
 		}
 
-		resourceMap[ns] = Resources{
+		resourceMap[SystemType(system)] = SystemResource{
 			AppLabels:        appLabels,
 			JVMAppNames:      jvmAppNames,
 			HTTPAppNames:     httpAppNames,
@@ -701,10 +728,114 @@ func GetNsResources() (map[string]Resources, error) {
 	return resourceMap, nil
 }
 
-func GetChaosResourceMap() (map[string]ResourceField, error) {
-	injectionConfType := reflect.TypeOf(InjectionConf{})
+// GetSystemResource retrieves system resources for a single system
+func GetSystemResource(ctx context.Context, system SystemType) (SystemResource, error) {
+	internalSystem := systemconfig.SystemType(system)
+	systemCache := resourcelookup.GetSystemCache(internalSystem)
+	namespace, err := systemconfig.GetNamespaceByIndex(internalSystem, defaultStartIndex)
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get namespace prefix for system %s: %v", system, err)
+	}
 
-	result := make(map[string]ResourceField, injectionConfType.NumField())
+	appLabels, err := systemCache.GetAllAppLabels(ctx, namespace, defaultAppLabel)
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get app labels namespace %s for system %s: %v", namespace, system, err)
+	}
+
+	methods, err := systemCache.GetAllJVMMethods()
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get JVM methods: %v", err)
+	}
+
+	jvmAppNames := make([]string, 0, len(methods))
+	for _, method := range methods {
+		jvmAppNames = append(jvmAppNames, method.AppName)
+	}
+
+	endpoints, err := systemCache.GetAllHTTPEndpoints()
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get HTTP endpoints: %v", err)
+	}
+
+	httpAppNames := make([]string, 0, len(endpoints))
+	for _, endpoint := range endpoints {
+		httpAppNames = append(httpAppNames, endpoint.AppName)
+	}
+
+	pairs, err := systemCache.GetAllNetworkPairs()
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get network pairs: %v", err)
+	}
+
+	networkPairs := make([]Pair, 0, len(pairs))
+	for _, pair := range pairs {
+		networkPairs = append(networkPairs, Pair{
+			Source: pair.SourceService,
+			Target: pair.TargetService,
+		})
+	}
+
+	dnsEndpoints, err := systemCache.GetAllDNSEndpoints()
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get DNS endpoints: %v", err)
+	}
+
+	dnsAppNames := make([]string, 0, len(dnsEndpoints))
+	for _, endpoint := range dnsEndpoints {
+		dnsAppNames = append(dnsAppNames, endpoint.AppName)
+	}
+
+	operations, err := systemCache.GetAllDatabaseOperations()
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get database operations: %v", err)
+	}
+
+	databaseAppNames := make([]string, 0, len(operations))
+	for _, operation := range operations {
+		databaseAppNames = append(databaseAppNames, operation.AppName)
+	}
+
+	containers, err := systemCache.GetAllContainers(ctx, namespace)
+	if err != nil {
+		return SystemResource{}, fmt.Errorf("failed to get containers of namespace %s for system %s: %v", namespace, system, err)
+	}
+
+	containerNames := make([]string, 0, len(containers))
+	for _, container := range containers {
+		containerNames = append(containerNames, container.AppLabel)
+	}
+
+	return SystemResource{
+		AppLabels:        appLabels,
+		JVMAppNames:      jvmAppNames,
+		HTTPAppNames:     httpAppNames,
+		NetworkPairs:     networkPairs,
+		DNSAppNames:      dnsAppNames,
+		DatabaseAppNames: databaseAppNames,
+		ContainerNames:   containerNames,
+	}, nil
+}
+
+type ChaosResourceMapping struct {
+	IndexFieldName string `json:"index_field_name"`
+	ResourceType   string `json:"resource_type"`
+}
+
+var keyResourceMap = map[string]string{
+	keyApp:         "app_labels",
+	keyMethod:      "jvm_app_names",
+	keyTarget:      "jvm_app_names",
+	keyEndpoint:    "http_app_names",
+	keyNetworkPair: "network_pairs",
+	keyDNSEndpoint: "dns_app_names",
+	keyDatabase:    "database_app_names",
+	keyContainer:   "container_names",
+}
+
+func GetChaosTypeResourceMappings() (map[string]ChaosResourceMapping, error) {
+	injectionConfType := reflect.TypeFor[InjectionConf]()
+
+	result := make(map[string]ChaosResourceMapping, injectionConfType.NumField())
 	for i := 0; i < injectionConfType.NumField(); i++ {
 		field := injectionConfType.Field(i)
 		fieldName := field.Name
@@ -719,9 +850,9 @@ func GetChaosResourceMap() (map[string]ResourceField, error) {
 					return nil, fmt.Errorf("unknown resource index name: %s", resourceIndexName)
 				}
 
-				result[fieldName] = ResourceField{
-					IndexName: resourceIndexName,
-					Name:      resourceKey,
+				result[fieldName] = ChaosResourceMapping{
+					IndexFieldName: resourceIndexName,
+					ResourceType:   resourceKey,
 				}
 			} else {
 				return nil, fmt.Errorf("field %s does not have enough fields", fieldName)

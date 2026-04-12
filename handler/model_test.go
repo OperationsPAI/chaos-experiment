@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -12,30 +13,24 @@ import (
 )
 
 func TestGenerateRandomAction(t *testing.T) {
-	targetCount := 6
-	if err := InitTargetConfig(map[string]int{"ts": targetCount}, "app"); err != nil {
-		t.Error(err.Error())
-		return
-	}
-
 	rand.Seed(time.Now().UnixNano()) // For reproducibility in tests
 	for range 1000 {
-		spec, err := StructToNode[InjectionConf]("ts")
+		spec, err := StructToNode[InjectionConf](context.Background(), SystemTrainTicket)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		podNode, err := randomGenerateNode(spec)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
-		conf, err := NodeToStruct[InjectionConf](podNode)
+		conf, err := NodeToStruct[InjectionConf](context.Background(), podNode)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
-		pp.Println(conf.GetDisplayConfig())
+		pp.Println(conf.GetDisplayConfig(context.Background()))
 	}
 }
 

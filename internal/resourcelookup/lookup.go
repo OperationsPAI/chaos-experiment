@@ -6,10 +6,13 @@ import (
 	"sync"
 
 	"github.com/LGU-SE-Internal/chaos-experiment/client"
-	_ "github.com/LGU-SE-Internal/chaos-experiment/internal/adapter" // Auto-register all systems
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/registry"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/databaseoperations"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/grpcoperations"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/javaclassmethods"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/javamutatorconfig"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/networkdependencies"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
-	"github.com/LGU-SE-Internal/chaos-experiment/utils"
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,6 +21,19 @@ type AppMethodPair struct {
 	AppName    string `json:"app_name"`
 	ClassName  string `json:"class_name"`
 	MethodName string `json:"method_name"`
+}
+
+// AppRuntimeMutatorTarget represents a flattened valid runtime mutator target.
+type AppRuntimeMutatorTarget struct {
+	AppName          string `json:"app_name"`
+	ClassName        string `json:"class_name"`
+	MethodName       string `json:"method_name"`
+	MutationType     int    `json:"mutation_type"`
+	MutationTypeName string `json:"mutation_type_name"`
+	MutationFrom     string `json:"mutation_from,omitempty"`
+	MutationTo       string `json:"mutation_to,omitempty"`
+	MutationStrategy string `json:"mutation_strategy,omitempty"`
+	Description      string `json:"description,omitempty"`
 }
 
 // AppEndpointPair represents a flattened app+endpoint combination
@@ -59,33 +75,87 @@ type ContainerInfo struct {
 	ContainerName string `json:"container_name"`
 }
 
-// Global cache for lookups - now system-aware
+type systemCache struct {
+	system                systemconfig.SystemType
+	appLabels             map[string][]string
+	appMethods            []AppMethodPair
+	runtimeMutatorTargets []AppRuntimeMutatorTarget
+	appEndpoints          []AppEndpointPair
+	networkPairs          []AppNetworkPair
+	dnsEndpoints          []AppDNSPair
+	containerInfo         map[string][]ContainerInfo
+	dbOperations          []AppDatabasePair
+}
+
+func GetSystemCache(system systemconfig.SystemType) *systemCache {
+	return getCacheManager().getSystemCache(system)
+}
+
+// newSystemCache creates a new systemCache instance
+func newSystemCache(system systemconfig.SystemType) *systemCache {
+	return &systemCache{
+		system:                system,
+		appLabels:             make(map[string][]string),
+		appMethods:            []AppMethodPair{},
+		runtimeMutatorTargets: []AppRuntimeMutatorTarget{},
+		appEndpoints:          []AppEndpointPair{},
+		networkPairs:          []AppNetworkPair{},
+		dnsEndpoints:          []AppDNSPair{},
+		dbOperations:          []AppDatabasePair{},
+		containerInfo:         make(map[string][]ContainerInfo),
+	}
+}
+
+// cacheManager manages caches for different namespaces (singleton)
+type cacheManager struct {
+	caches map[systemconfig.SystemType]*systemCache
+	mu     sync.RWMutex
+}
+
 var (
-	cacheMutex          sync.RWMutex
-	cachedAppLabels     map[string][]string
-	cachedAppMethods    map[systemconfig.SystemType][]AppMethodPair
-	cachedAppEndpoints  map[systemconfig.SystemType][]AppEndpointPair
-	cachedNetworkPairs  map[systemconfig.SystemType][]AppNetworkPair
-	cachedDNSEndpoints  map[systemconfig.SystemType][]AppDNSPair
-	cachedContainerInfo map[string][]ContainerInfo
-	cachedDBOperations  map[systemconfig.SystemType][]AppDatabasePair
+	managerInstance *cacheManager
+	managerOnce     sync.Once
 )
 
+// getCacheManager returns the singleton CacheManager instance
+func getCacheManager() *cacheManager {
+	managerOnce.Do(func() {
+		allSystemTypes := systemconfig.GetAllSystemTypes()
+		managerInstance = &cacheManager{
+			caches: make(map[systemconfig.SystemType]*systemCache, len(allSystemTypes)),
+		}
+	})
+	return managerInstance
+}
+
+func (cm *cacheManager) getSystemCache(system systemconfig.SystemType) *systemCache {
+	cm.mu.RLock()
+	cache, exists := cm.caches[system]
+	cm.mu.RUnlock()
+
+	if !exists {
+		cm.mu.Lock()
+		defer cm.mu.Unlock()
+		// Double-check existence
+		cache, exists = cm.caches[system]
+		if !exists {
+			cache = newSystemCache(system)
+			cm.caches[system] = cache
+		}
+	}
+
+	return cache
+}
+
 // GetAllAppLabels returns all application labels sorted alphabetically
-func GetAllAppLabels(namespace string, key string) ([]string, error) {
-	prefix, err := utils.ExtractNsPrefix(namespace)
-	if err != nil {
-		return nil, err
+func (s *systemCache) GetAllAppLabels(ctx context.Context, namespace string, key string) ([]string, error) {
+	if len(s.appLabels) > 0 {
+		if labels, exists := s.appLabels[key]; exists {
+			return labels, nil
+		}
 	}
 
-	cacheMutex.RLock()
-	if labels, exists := cachedAppLabels[prefix]; exists && len(labels) > 0 {
-		cacheMutex.RUnlock()
-		return labels, nil
-	}
-	cacheMutex.RUnlock()
-
-	labels, err := client.GetLabels(context.Background(), namespace, key)
+	labels, err := client.GetLabels(ctx, namespace, key)
 	logrus.Debugf("Fetched labels for namespace %s with key %s: %v", namespace, key, labels)
 	if err != nil {
 		return nil, err
@@ -93,38 +163,111 @@ func GetAllAppLabels(namespace string, key string) ([]string, error) {
 
 	// Sort alphabetically
 	sort.Strings(labels)
-	
-	cacheMutex.Lock()
-	if cachedAppLabels == nil {
-		cachedAppLabels = make(map[string][]string)
-	}
-	cachedAppLabels[prefix] = labels
-	cacheMutex.Unlock()
-	
 	return labels, nil
 }
 
-// GetAllHTTPEndpoints returns all app+endpoint pairs sorted by app name
-// This function uses the current system from systemconfig and the NEW registry pattern
-func GetAllHTTPEndpoints() ([]AppEndpointPair, error) {
-	currentSystem := systemconfig.GetCurrentSystem()
-	
-	cacheMutex.RLock()
-	if cachedAppEndpoints != nil {
-		if result, exists := cachedAppEndpoints[currentSystem]; exists {
-			cacheMutex.RUnlock()
-			return result, nil
+// GetAllJVMMethods returns all app+method pairs sorted by app name
+// This function uses the current system from systemconfig
+func (s *systemCache) GetAllJVMMethods() ([]AppMethodPair, error) {
+	if len(s.appMethods) > 0 {
+		return s.appMethods, nil
+	}
+
+	// Get all service names first
+	services := javaclassmethods.ListAllServiceNames()
+	result := make([]AppMethodPair, 0)
+
+	// For each service, get its methods
+	for _, serviceName := range services {
+		methods := javaclassmethods.GetClassMethodsByService(serviceName)
+		for _, method := range methods {
+			result = append(result, AppMethodPair{
+				AppName:    serviceName,
+				ClassName:  method.ClassName,
+				MethodName: method.MethodName,
+			})
 		}
 	}
-	cacheMutex.RUnlock()
 
-	// NEW: Use registry pattern instead of direct imports
-	sysData := registry.MustGetCurrent()
+	// Sort by app name for consistency
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].AppName != result[j].AppName {
+			return result[i].AppName < result[j].AppName
+		}
+		if result[i].ClassName != result[j].ClassName {
+			return result[i].ClassName < result[j].ClassName
+		}
+		return result[i].MethodName < result[j].MethodName
+	})
+
+	s.appMethods = result
+
+	return result, nil
+}
+
+// GetAllJVMRuntimeMutatorTargets returns all valid runtime mutator targets sorted by app name.
+func (s *systemCache) GetAllJVMRuntimeMutatorTargets() ([]AppRuntimeMutatorTarget, error) {
+	if len(s.runtimeMutatorTargets) > 0 {
+		return s.runtimeMutatorTargets, nil
+	}
+
+	injections := javamutatorconfig.ListAllValidInjections()
+	result := make([]AppRuntimeMutatorTarget, 0, len(injections))
+
+	for _, injection := range injections {
+		result = append(result, AppRuntimeMutatorTarget{
+			AppName:          injection.AppName,
+			ClassName:        injection.ClassName,
+			MethodName:       injection.MethodName,
+			MutationType:     injection.Mutation.Type,
+			MutationTypeName: injection.Mutation.TypeName,
+			MutationFrom:     injection.Mutation.From,
+			MutationTo:       injection.Mutation.To,
+			MutationStrategy: injection.Mutation.Strategy,
+			Description:      injection.Mutation.Description,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].AppName != result[j].AppName {
+			return result[i].AppName < result[j].AppName
+		}
+		if result[i].ClassName != result[j].ClassName {
+			return result[i].ClassName < result[j].ClassName
+		}
+		if result[i].MethodName != result[j].MethodName {
+			return result[i].MethodName < result[j].MethodName
+		}
+		if result[i].MutationType != result[j].MutationType {
+			return result[i].MutationType < result[j].MutationType
+		}
+		if result[i].MutationStrategy != result[j].MutationStrategy {
+			return result[i].MutationStrategy < result[j].MutationStrategy
+		}
+		if result[i].MutationFrom != result[j].MutationFrom {
+			return result[i].MutationFrom < result[j].MutationFrom
+		}
+		return result[i].MutationTo < result[j].MutationTo
+	})
+
+	s.runtimeMutatorTargets = result
+	return result, nil
+}
+
+// GetAllHTTPEndpoints returns all app+endpoint pairs sorted by app name
+// This function uses the current system from systemconfig
+func (s *systemCache) GetAllHTTPEndpoints() ([]AppEndpointPair, error) {
+	if len(s.appEndpoints) > 0 {
+		return s.appEndpoints, nil
+	}
+
+	// Get all service names
+	services := serviceendpoints.GetAllServices()
 	result := make([]AppEndpointPair, 0)
 
 	// For each service, get its endpoints
-	for _, serviceName := range sysData.GetAllServices() {
-		endpoints := sysData.GetHTTPEndpointsByService(serviceName)
+	for _, serviceName := range services {
+		endpoints := serviceendpoints.GetEndpointsByService(serviceName)
 		for _, endpoint := range endpoints {
 			// Skip non-HTTP endpoints like rabbitmq
 			if endpoint.ServerAddress == "ts-rabbitmq" {
@@ -153,97 +296,28 @@ func GetAllHTTPEndpoints() ([]AppEndpointPair, error) {
 		return result[i].Route < result[j].Route
 	})
 
-	cacheMutex.Lock()
-	if cachedAppEndpoints == nil {
-		cachedAppEndpoints = make(map[systemconfig.SystemType][]AppEndpointPair)
-	}
-	cachedAppEndpoints[currentSystem] = result
-	cacheMutex.Unlock()
-	
 	return result, nil
 }
 
 // GetAllNetworkPairs returns all network pairs sorted by source service
-// This function uses the current system from systemconfig and the NEW registry pattern
-func GetAllNetworkPairs() ([]AppNetworkPair, error) {
-	currentSystem := systemconfig.GetCurrentSystem()
-	
-	cacheMutex.RLock()
-	if cachedNetworkPairs != nil {
-		if result, exists := cachedNetworkPairs[currentSystem]; exists {
-			cacheMutex.RUnlock()
-			return result, nil
-		}
-	}
-	cacheMutex.RUnlock()
-
-	// NEW: Use registry pattern to build network pairs from all operation types
-	sysData := registry.MustGetCurrent()
-	pairMap := make(map[string]*AppNetworkPair)
-
-	// Add HTTP endpoints
-	for _, service := range sysData.GetAllServices() {
-		for _, ep := range sysData.GetHTTPEndpointsByService(service) {
-			if ep.ServerAddress != "" && ep.ServerAddress != service {
-				key := ep.ServiceName + "->" + ep.ServerAddress
-				if pairMap[key] == nil {
-					pairMap[key] = &AppNetworkPair{
-						SourceService: ep.ServiceName,
-						TargetService: ep.ServerAddress,
-						SpanNames:     []string{},
-					}
-				}
-				if ep.SpanName != "" {
-					pairMap[key].SpanNames = append(pairMap[key].SpanNames, ep.SpanName)
-				}
-			}
-		}
+// This function uses the current system from systemconfig
+func (s *systemCache) GetAllNetworkPairs() ([]AppNetworkPair, error) {
+	if len(s.networkPairs) > 0 {
+		return s.networkPairs, nil
 	}
 
-	// Add RPC operations
-	for _, service := range sysData.GetAllRPCServices() {
-		for _, op := range sysData.GetRPCOperationsByService(service) {
-			if op.ServerAddress != "" && op.ServerAddress != service {
-				key := op.ServiceName + "->" + op.ServerAddress
-				if pairMap[key] == nil {
-					pairMap[key] = &AppNetworkPair{
-						SourceService: op.ServiceName,
-						TargetService: op.ServerAddress,
-						SpanNames:     []string{},
-					}
-				}
-				if op.SpanName != "" {
-					pairMap[key].SpanNames = append(pairMap[key].SpanNames, op.SpanName)
-				}
-			}
-		}
-	}
+	// Get all service-to-service pairs
+	pairs := networkdependencies.GetAllServicePairs()
+	result := make([]AppNetworkPair, 0, len(pairs))
 
-	// Add Database operations
-	for _, service := range sysData.GetAllDatabaseServices() {
-		for _, op := range sysData.GetDatabaseOperationsByService(service) {
-			if op.ServerAddress != "" && op.ServerAddress != service {
-				key := op.ServiceName + "->" + op.ServerAddress
-				if pairMap[key] == nil {
-					pairMap[key] = &AppNetworkPair{
-						SourceService: op.ServiceName,
-						TargetService: op.ServerAddress,
-						SpanNames:     []string{},
-					}
-				}
-				if op.SpanName != "" {
-					pairMap[key].SpanNames = append(pairMap[key].SpanNames, op.SpanName)
-				}
-			}
-		}
-	}
-
-	// Convert map to slice
-	result := make([]AppNetworkPair, 0, len(pairMap))
-	for _, pair := range pairMap {
-		// Deduplicate and sort span names
-		pair.SpanNames = uniqueSorted(pair.SpanNames)
-		result = append(result, *pair)
+	for _, pair := range pairs {
+		// Get all span names between source and target services
+		spanNames := getSpanNamesBetweenServices(pair.SourceService, pair.TargetService)
+		result = append(result, AppNetworkPair{
+			SourceService: pair.SourceService,
+			TargetService: pair.TargetService,
+			SpanNames:     spanNames,
+		})
 	}
 
 	// Sort by source service for consistency
@@ -254,77 +328,86 @@ func GetAllNetworkPairs() ([]AppNetworkPair, error) {
 		return result[i].TargetService < result[j].TargetService
 	})
 
-	cacheMutex.Lock()
-	if cachedNetworkPairs == nil {
-		cachedNetworkPairs = make(map[systemconfig.SystemType][]AppNetworkPair)
-	}
-	cachedNetworkPairs[currentSystem] = result
-	cacheMutex.Unlock()
-	
 	return result, nil
 }
 
-// GetAllDNSEndpoints returns all DNS endpoints (HTTP + DB, excludes RPC)
-// This function uses the current system from systemconfig and the NEW registry pattern
-func GetAllDNSEndpoints() ([]AppDNSPair, error) {
-	currentSystem := systemconfig.GetCurrentSystem()
-	
-	cacheMutex.RLock()
-	if cachedDNSEndpoints != nil {
-		if result, exists := cachedDNSEndpoints[currentSystem]; exists {
-			cacheMutex.RUnlock()
-			return result, nil
+// getSpanNamesBetweenServices returns all unique span names for endpoints between two services
+func getSpanNamesBetweenServices(sourceService, targetService string) []string {
+	endpoints := serviceendpoints.GetEndpointsByService(sourceService)
+	spanNameSet := make(map[string]bool)
+
+	for _, endpoint := range endpoints {
+		// Check if this endpoint targets the target service
+		if endpoint.ServerAddress == targetService && endpoint.SpanName != "" {
+			spanNameSet[endpoint.SpanName] = true
 		}
 	}
-	cacheMutex.RUnlock()
 
-	// NEW: Use registry pattern for DNS endpoints (HTTP + DB, no RPC)
-	sysData := registry.MustGetCurrent()
-	domainMap := make(map[string]*AppDNSPair)
+	// Convert set to sorted slice
+	spanNames := make([]string, 0, len(spanNameSet))
+	for spanName := range spanNameSet {
+		spanNames = append(spanNames, spanName)
+	}
+	sort.Strings(spanNames)
+	return spanNames
+}
 
-	// Add HTTP endpoints
-	for _, service := range sysData.GetAllServices() {
-		for _, ep := range sysData.GetHTTPEndpointsByService(service) {
-			if ep.ServerAddress != "" && ep.ServerAddress != service {
-				key := ep.ServiceName + "->" + ep.ServerAddress
-				if domainMap[key] == nil {
-					domainMap[key] = &AppDNSPair{
-						AppName:   ep.ServiceName,
-						Domain:    ep.ServerAddress,
-						SpanNames: []string{},
-					}
+// GetAllDNSEndpoints returns all app+domain pairs for DNS chaos sorted by app name
+// This function uses the current system from systemconfig
+// Note: DNS chaos does NOT work for gRPC-only connections, so we filter those out
+// We use grpcoperations data to identify gRPC-only service pairs
+func (s *systemCache) GetAllDNSEndpoints() ([]AppDNSPair, error) {
+	if len(s.dnsEndpoints) > 0 {
+		return s.dnsEndpoints, nil
+	}
+
+	// Build a set of gRPC-only service pairs (source -> target)
+	// This uses the grpcoperations data to identify which service pairs only use gRPC
+	grpcOnlyPairs := buildGRPCOnlyPairs()
+
+	// Get all service names
+	services := serviceendpoints.GetAllServices()
+	result := make([]AppDNSPair, 0)
+
+	// For each service, get its endpoints
+	for _, serviceName := range services {
+		endpoints := serviceendpoints.GetEndpointsByService(serviceName)
+		// Map from domain to span names
+		domainSpanNames := make(map[string]map[string]bool)
+
+		for _, endpoint := range endpoints {
+			// Only include valid server addresses that are not the service itself
+			if endpoint.ServerAddress != "" &&
+				endpoint.ServerAddress != serviceName {
+				if domainSpanNames[endpoint.ServerAddress] == nil {
+					domainSpanNames[endpoint.ServerAddress] = make(map[string]bool)
 				}
-				if ep.SpanName != "" {
-					domainMap[key].SpanNames = append(domainMap[key].SpanNames, ep.SpanName)
+				if endpoint.SpanName != "" {
+					domainSpanNames[endpoint.ServerAddress][endpoint.SpanName] = true
 				}
 			}
 		}
-	}
 
-	// Add Database operations
-	for _, service := range sysData.GetAllDatabaseServices() {
-		for _, op := range sysData.GetDatabaseOperationsByService(service) {
-			if op.ServerAddress != "" && op.ServerAddress != service {
-				key := op.ServiceName + "->" + op.ServerAddress
-				if domainMap[key] == nil {
-					domainMap[key] = &AppDNSPair{
-						AppName:   op.ServiceName,
-						Domain:    op.ServerAddress,
-						SpanNames: []string{},
-					}
-				}
-				if op.SpanName != "" {
-					domainMap[key].SpanNames = append(domainMap[key].SpanNames, op.SpanName)
-				}
+		// Convert to AppDNSPairs with span names, filtering out gRPC-only connections
+		for domain, spanNameSet := range domainSpanNames {
+			// Check if this service pair is gRPC-only
+			pairKey := serviceName + "->" + domain
+			if grpcOnlyPairs[pairKey] {
+				// Skip gRPC-only connections - DNS chaos doesn't work for them
+				continue
 			}
-		}
-	}
 
-	// Convert map to slice
-	result := make([]AppDNSPair, 0, len(domainMap))
-	for _, pair := range domainMap {
-		pair.SpanNames = uniqueSorted(pair.SpanNames)
-		result = append(result, *pair)
+			spanNames := make([]string, 0, len(spanNameSet))
+			for spanName := range spanNameSet {
+				spanNames = append(spanNames, spanName)
+			}
+			sort.Strings(spanNames)
+			result = append(result, AppDNSPair{
+				AppName:   serviceName,
+				Domain:    domain,
+				SpanNames: spanNames,
+			})
+		}
 	}
 
 	// Sort by app name for consistency
@@ -335,46 +418,81 @@ func GetAllDNSEndpoints() ([]AppDNSPair, error) {
 		return result[i].Domain < result[j].Domain
 	})
 
-	cacheMutex.Lock()
-	if cachedDNSEndpoints == nil {
-		cachedDNSEndpoints = make(map[systemconfig.SystemType][]AppDNSPair)
-	}
-	cachedDNSEndpoints[currentSystem] = result
-	cacheMutex.Unlock()
-	
 	return result, nil
 }
 
-// GetAllDatabaseOperations returns all database operations
-// This function uses the current system from systemconfig and the NEW registry pattern
-func GetAllDatabaseOperations() ([]AppDatabasePair, error) {
-	currentSystem := systemconfig.GetCurrentSystem()
-	
-	cacheMutex.RLock()
-	if cachedDBOperations != nil {
-		if result, exists := cachedDBOperations[currentSystem]; exists {
-			cacheMutex.RUnlock()
-			return result, nil
+// buildGRPCOnlyPairs builds a set of service pairs that only communicate via gRPC
+// Returns a map where key is "source->target" and value is true if gRPC-only
+func buildGRPCOnlyPairs() map[string]bool {
+	grpcOnlyPairs := make(map[string]bool)
+
+	// Get all gRPC client operations (these represent outgoing gRPC calls)
+	grpcOps := grpcoperations.GetClientOperations()
+
+	// Track which service pairs have gRPC connections
+	grpcPairs := make(map[string]bool)
+	for _, op := range grpcOps {
+		pairKey := op.ServiceName + "->" + op.ServerAddress
+		grpcPairs[pairKey] = true
+	}
+
+	// Get all service endpoints to check which pairs also have HTTP
+	services := serviceendpoints.GetAllServices()
+	httpPairs := make(map[string]bool)
+
+	for _, serviceName := range services {
+		endpoints := serviceendpoints.GetEndpointsByService(serviceName)
+		for _, endpoint := range endpoints {
+			// HTTP endpoints have non-empty Route that doesn't look like gRPC
+			// (simple heuristic: HTTP routes don't start with /package.Service/)
+			if endpoint.ServerAddress != "" && endpoint.ServerAddress != serviceName {
+				if endpoint.Route != "" && !grpcoperations.IsGRPCRoutePattern(endpoint.Route) {
+					pairKey := serviceName + "->" + endpoint.ServerAddress
+					httpPairs[pairKey] = true
+				}
+			}
 		}
 	}
-	cacheMutex.RUnlock()
 
-	// NEW: Use registry pattern for database operations
-	sysData := registry.MustGetCurrent()
+	// A pair is gRPC-only if it has gRPC but no HTTP
+	for pair := range grpcPairs {
+		if !httpPairs[pair] {
+			grpcOnlyPairs[pair] = true
+		}
+	}
+
+	return grpcOnlyPairs
+}
+
+// GetAllDatabaseOperations returns all app+database operations pairs sorted by app name
+// This function uses the current system from systemconfig
+// Note: DB chaos only supports MySQL, so we filter to only return MySQL operations
+func (s *systemCache) GetAllDatabaseOperations() ([]AppDatabasePair, error) {
+	if len(s.dbOperations) > 0 {
+		return s.dbOperations, nil
+	}
+
+	// Get all service names that have database operations
+	services := databaseoperations.GetAllDatabaseServices()
 	result := make([]AppDatabasePair, 0)
 
-	for _, service := range sysData.GetAllDatabaseServices() {
-		for _, op := range sysData.GetDatabaseOperationsByService(service) {
-			result = append(result, AppDatabasePair{
-				AppName:       op.ServiceName,
-				DBName:        op.DBName,
-				TableName:     op.DBTable,
-				OperationType: op.Operation,
-			})
+	// For each service, get its database operations
+	for _, serviceName := range services {
+		operations := databaseoperations.GetOperationsByService(serviceName)
+		for _, op := range operations {
+			// Only include MySQL operations (DB chaos only supports MySQL)
+			if op.DBSystem == "mysql" {
+				result = append(result, AppDatabasePair{
+					AppName:       serviceName,
+					DBName:        op.DBName,
+					TableName:     op.DBTable,
+					OperationType: op.Operation,
+				})
+			}
 		}
 	}
 
-	// Sort by app name, then database name
+	// Sort by app name for consistency
 	sort.Slice(result, func(i, j int) bool {
 		if result[i].AppName != result[j].AppName {
 			return result[i].AppName < result[j].AppName
@@ -382,36 +500,24 @@ func GetAllDatabaseOperations() ([]AppDatabasePair, error) {
 		if result[i].DBName != result[j].DBName {
 			return result[i].DBName < result[j].DBName
 		}
-		return result[i].TableName < result[j].TableName
+		if result[i].TableName != result[j].TableName {
+			return result[i].TableName < result[j].TableName
+		}
+		return result[i].OperationType < result[j].OperationType
 	})
 
-	cacheMutex.Lock()
-	if cachedDBOperations == nil {
-		cachedDBOperations = make(map[systemconfig.SystemType][]AppDatabasePair)
-	}
-	cachedDBOperations[currentSystem] = result
-	cacheMutex.Unlock()
-	
 	return result, nil
 }
 
 // GetAllContainers returns all containers with their info sorted by app label
-func GetAllContainers(namespace string) ([]ContainerInfo, error) {
-	prefix, err := utils.ExtractNsPrefix(namespace)
-	if err != nil {
-		return nil, err
+func (s *systemCache) GetAllContainers(ctx context.Context, namespace string) ([]ContainerInfo, error) {
+	if len(s.containerInfo) > 0 {
+		if containers, exists := s.containerInfo[namespace]; exists {
+			return containers, nil
+		}
 	}
 
-	cacheKey := prefix + ":all"
-
-	cacheMutex.RLock()
-	if result, exists := cachedContainerInfo[cacheKey]; exists && len(result) > 0 {
-		cacheMutex.RUnlock()
-		return result, nil
-	}
-	cacheMutex.RUnlock()
-
-	containers, err := client.GetContainersWithAppLabel(context.Background(), namespace)
+	containers, err := client.GetContainersWithAppLabel(ctx, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -435,63 +541,13 @@ func GetAllContainers(namespace string) ([]ContainerInfo, error) {
 		return result[i].ContainerName < result[j].ContainerName
 	})
 
-	cacheMutex.Lock()
-	if cachedContainerInfo == nil {
-		cachedContainerInfo = make(map[string][]ContainerInfo)
-	}
-	cachedContainerInfo[cacheKey] = result
-	cacheMutex.Unlock()
-
+	s.containerInfo[namespace] = result
 	return result, nil
 }
 
-// GetContainersByAppLabel returns all containers for a given app label
-func GetContainersByAppLabel(appLabel, namespace string) ([]ContainerInfo, error) {
-	prefix, err := utils.ExtractNsPrefix(namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	cacheKey := prefix + ":" + appLabel
-
-	cacheMutex.RLock()
-	if containers, exists := cachedContainerInfo[cacheKey]; exists && len(containers) > 0 {
-		cacheMutex.RUnlock()
-		return containers, nil
-	}
-	cacheMutex.RUnlock()
-
-	// Get all containers with app labels
-	allContainers, err := client.GetContainersWithAppLabel(context.Background(), namespace)
-	if err != nil {
-		return nil, err
-	}
-
-	// Filter by the specific app label
-	containers := make([]ContainerInfo, 0)
-	for _, c := range allContainers {
-		if c["appLabel"] == appLabel {
-			containers = append(containers, ContainerInfo{
-				PodName:       c["podName"],
-				AppLabel:      c["appLabel"],
-				ContainerName: c["containerName"],
-			})
-		}
-	}
-
-	cacheMutex.Lock()
-	if cachedContainerInfo == nil {
-		cachedContainerInfo = make(map[string][]ContainerInfo)
-	}
-	cachedContainerInfo[cacheKey] = containers
-	cacheMutex.Unlock()
-
-	return containers, nil
-}
-
 // GetContainersByService returns all container names for a specific service
-func GetContainersByService(namespace string, serviceName string) ([]string, error) {
-	allContainers, err := GetAllContainers(namespace)
+func (s *systemCache) GetContainersByService(ctx context.Context, namespace string, serviceName string) ([]string, error) {
+	allContainers, err := s.GetAllContainers(ctx, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -509,8 +565,8 @@ func GetContainersByService(namespace string, serviceName string) ([]string, err
 }
 
 // GetPodsByService returns all pod names for a specific service
-func GetPodsByService(namespace string, serviceName string) ([]string, error) {
-	allContainers, err := GetAllContainers(namespace)
+func (s *systemCache) GetPodsByService(ctx context.Context, namespace string, serviceName string) ([]string, error) {
+	allContainers, err := s.GetAllContainers(ctx, namespace)
 	if err != nil {
 		return nil, err
 	}
@@ -536,8 +592,8 @@ func GetPodsByService(namespace string, serviceName string) ([]string, error) {
 
 // GetContainersAndPodsByServices returns containers and pods for multiple services
 // This is useful for chaos that affects multiple services
-func GetContainersAndPodsByServices(namespace string, serviceNames []string) ([]string, []string, error) {
-	allContainers, err := GetAllContainers(namespace)
+func (s *systemCache) GetContainersAndPodsByServices(ctx context.Context, namespace string, serviceNames []string) ([]string, []string, error) {
+	allContainers, err := s.GetAllContainers(ctx, namespace)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -578,130 +634,13 @@ func GetContainersAndPodsByServices(namespace string, serviceNames []string) ([]
 	return containers, pods, nil
 }
 
-// InitCaches initializes resource caches
-func InitCaches() {
-	cacheMutex.Lock()
-	defer cacheMutex.Unlock()
-	
-	cachedAppLabels = make(map[string][]string)
-	cachedContainerInfo = make(map[string][]ContainerInfo)
-	cachedAppMethods = make(map[systemconfig.SystemType][]AppMethodPair)
-	cachedAppEndpoints = make(map[systemconfig.SystemType][]AppEndpointPair)
-	cachedNetworkPairs = make(map[systemconfig.SystemType][]AppNetworkPair)
-	cachedDNSEndpoints = make(map[systemconfig.SystemType][]AppDNSPair)
-	cachedDBOperations = make(map[systemconfig.SystemType][]AppDatabasePair)
-}
-
-// PreloadCaches preloads resource caches to reduce first-access latency
-func PreloadCaches(namespace string, labelKey string) error {
-	var wg sync.WaitGroup
-	errChan := make(chan error, 6)
-
-	wg.Add(6)
-
-	// Preload app labels
-	go func() {
-		defer wg.Done()
-		_, err := GetAllAppLabels(namespace, labelKey)
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	// Preload HTTP endpoints
-	go func() {
-		defer wg.Done()
-		_, err := GetAllHTTPEndpoints()
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	// Preload network pairs
-	go func() {
-		defer wg.Done()
-		_, err := GetAllNetworkPairs()
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	// Preload DNS endpoints
-	go func() {
-		defer wg.Done()
-		_, err := GetAllDNSEndpoints()
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	// Preload database operations
-	go func() {
-		defer wg.Done()
-		_, err := GetAllDatabaseOperations()
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	// Preload container info
-	go func() {
-		defer wg.Done()
-		_, err := GetAllContainers(namespace)
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	// Wait for all initialization to complete
-	wg.Wait()
-	close(errChan)
-
-	// Return the first error if any
-	for err := range errChan {
-		return err
-	}
-
-	return nil
-}
-
-// ClearCache clears all cached data (alias for InvalidateCache)
-func ClearCache() {
-	cacheMutex.Lock()
-	defer cacheMutex.Unlock()
-	
-	cachedAppLabels = nil
-	cachedAppMethods = nil
-	cachedAppEndpoints = nil
-	cachedNetworkPairs = nil
-	cachedDNSEndpoints = nil
-	cachedContainerInfo = nil
-	cachedDBOperations = nil
-}
-
 // InvalidateCache clears all cached data
-func InvalidateCache() {
-	ClearCache()
-}
-
-// Helper functions
-
-func uniqueSorted(items []string) []string {
-	seen := make(map[string]bool)
-	result := make([]string, 0, len(items))
-	for _, item := range items {
-		if !seen[item] && item != "" {
-			seen[item] = true
-			result = append(result, item)
-		}
-	}
-	sort.Strings(result)
-	return result
-}
-
-// GetAllJVMMethods is not migrated yet - would need JVM data in registry
-// Keeping stub for compatibility
-func GetAllJVMMethods() ([]AppMethodPair, error) {
-	// TODO: Migrate JVM methods to registry pattern
-	return []AppMethodPair{}, nil
+func (s *systemCache) InvalidateCache() {
+	s.appLabels = make(map[string][]string)
+	s.appMethods = []AppMethodPair{}
+	s.appEndpoints = []AppEndpointPair{}
+	s.networkPairs = []AppNetworkPair{}
+	s.dnsEndpoints = []AppDNSPair{}
+	s.containerInfo = make(map[string][]ContainerInfo)
+	s.dbOperations = []AppDatabasePair{}
 }

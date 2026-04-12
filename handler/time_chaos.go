@@ -6,13 +6,14 @@ import (
 	"strconv"
 
 	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type TimeSkewSpec struct {
 	Duration     int `range:"1-60" description:"Time Unit Minute"`
-	Namespace    int `range:"0-0" dynamic:"true"`
+	System       int `range:"0-0" dynamic:"true"`
 	ContainerIdx int `range:"0-0" dynamic:"true" description:"Container Index"`
 	TimeOffset   int `range:"-600-600" description:"Time offset in seconds"`
 }
@@ -39,12 +40,18 @@ func (s *TimeSkewSpec) Create(cli cli.Client, opts ...Option) (string, error) {
 	}
 
 	ns := conf.Namespace
+	system := conf.System
 
-	containerInfo, err := getContainerInfoByIndex(ns, s.ContainerIdx)
+	containers, err := resourcelookup.GetSystemCache(system).GetAllContainers(ctx, ns)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get containers: %w", err)
 	}
 
+	if s.ContainerIdx < 0 || s.ContainerIdx >= len(containers) {
+		return "", fmt.Errorf("container index out of range: %d (max: %d)", s.ContainerIdx, len(containers)-1)
+	}
+
+	containerInfo := containers[s.ContainerIdx]
 	appName := containerInfo.AppLabel
 	containerName := containerInfo.ContainerName
 

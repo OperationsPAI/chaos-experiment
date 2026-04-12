@@ -7,11 +7,9 @@ import (
 
 	hsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/databaseoperations"
 	mediadb "github.com/LGU-SE-Internal/chaos-experiment/internal/media/databaseoperations"
-	oteldemodb "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/databaseoperations"
 	obdb "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/databaseoperations"
+	oteldemodb "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/databaseoperations"
 	sndb "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/databaseoperations"
-	sockshopdb "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/databaseoperations"
-	teastoredb "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/databaseoperations"
 	tsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/databaseoperations"
 )
 
@@ -48,12 +46,6 @@ func GetOperationsByService(serviceName string) []DatabaseOperation {
 	case systemconfig.SystemOnlineBoutique:
 		obOps := obdb.GetOperationsByService(serviceName)
 		return convertOBOperations(obOps)
-	case systemconfig.SystemSockShop:
-		sockshopOps := sockshopdb.GetOperationsByService(serviceName)
-		return convertSockShopOperations(sockshopOps)
-	case systemconfig.SystemTeaStore:
-		teastoreOps := teastoredb.GetOperationsByService(serviceName)
-		return convertTeaStoreOperations(teastoreOps)
 	default:
 		// Default to TrainTicket
 		tsOps := tsdb.GetOperationsByService(serviceName)
@@ -217,6 +209,7 @@ func convertSNOperations(snOps []sndb.DatabaseOperation) []DatabaseOperation {
 	}
 	return result
 }
+
 // convertOBOperations converts ob-specific operations to the common type
 func convertOBOperations(obOps []obdb.DatabaseOperation) []DatabaseOperation {
 	result := make([]DatabaseOperation, len(obOps))
@@ -233,38 +226,3 @@ func convertOBOperations(obOps []obdb.DatabaseOperation) []DatabaseOperation {
 	}
 	return result
 }
-
-// convertSockShopOperations converts sockshop-specific operations to the common type
-func convertSockShopOperations(sockshopOps []sockshopdb.DatabaseOperation) []DatabaseOperation {
-	result := make([]DatabaseOperation, len(sockshopOps))
-	for i, op := range sockshopOps {
-		result[i] = DatabaseOperation{
-			ServiceName:   op.ServiceName,
-			DBName:        op.DBName,
-			DBTable:       op.DBTable,
-			Operation:     op.Operation,
-			DBSystem:      op.DBSystem,
-			ServerAddress: op.ServerAddress,
-			ServerPort:    op.ServerPort,
-		}
-	}
-	return result
-}
-
-// convertTeaStoreOperations converts teastore-specific operations to the common type
-func convertTeaStoreOperations(teastoreOps []teastoredb.DatabaseOperation) []DatabaseOperation {
-	result := make([]DatabaseOperation, len(teastoreOps))
-	for i, op := range teastoreOps {
-		result[i] = DatabaseOperation{
-			ServiceName:   op.ServiceName,
-			DBName:        op.DBName,
-			DBTable:       op.DBTable,
-			Operation:     op.Operation,
-			DBSystem:      op.DBSystem,
-			ServerAddress: op.ServerAddress,
-			ServerPort:    op.ServerPort,
-		}
-	}
-	return result
-}
-

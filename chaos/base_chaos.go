@@ -20,6 +20,7 @@ type ConfigChaos struct {
 	NetworkChaos         *chaosmeshv1alpha1.NetworkChaosSpec
 	PhysicalMachineChaos *chaosmeshv1alpha1.PhysicalMachineChaosSpec
 	PodChaos             *chaosmeshv1alpha1.PodChaosSpec
+	RuntimeMutatorChaos  *chaosmeshv1alpha1.RuntimeMutatorChaosSpec
 	StressChaos          *chaosmeshv1alpha1.StressChaosSpec
 	TimeChaos            *chaosmeshv1alpha1.TimeChaosSpec
 	Workflow             *chaosmeshv1alpha1.WorkflowSpec

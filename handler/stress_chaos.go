@@ -2,16 +2,18 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type CPUStressChaosSpec struct {
 	Duration     int `range:"1-60" description:"Time Unit Minute"`
-	Namespace    int `range:"0-0" dynamic:"true" description:"String"`
+	System       int `range:"0-0" dynamic:"true" description:"String"`
 	ContainerIdx int `range:"0-0" dynamic:"true" description:"Container Index"`
 	CPULoad      int `range:"1-100" description:"CPU Load Percentage"`
 	CPUWorker    int `range:"1-3" description:"CPU Stress Threads"`
@@ -39,12 +41,18 @@ func (s *CPUStressChaosSpec) Create(cli cli.Client, opts ...Option) (string, err
 	}
 
 	ns := conf.Namespace
+	system := conf.System
 
-	containerInfo, err := getContainerInfoByIndex(ns, s.ContainerIdx)
+	containers, err := resourcelookup.GetSystemCache(system).GetAllContainers(ctx, ns)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get containers: %w", err)
 	}
 
+	if s.ContainerIdx < 0 || s.ContainerIdx >= len(containers) {
+		return "", fmt.Errorf("container index out of range: %d (max: %d)", s.ContainerIdx, len(containers)-1)
+	}
+
+	containerInfo := containers[s.ContainerIdx]
 	appName := containerInfo.AppLabel
 	containerName := containerInfo.ContainerName
 
@@ -59,7 +67,7 @@ func (s *CPUStressChaosSpec) Create(cli cli.Client, opts ...Option) (string, err
 
 type MemoryStressChaosSpec struct {
 	Duration     int `range:"1-60" description:"Time Unit Minute"`
-	Namespace    int `range:"0-0" dynamic:"true" description:"String"`
+	System       int `range:"0-0" dynamic:"true" description:"String"`
 	ContainerIdx int `range:"0-0" dynamic:"true" description:"Container Index"`
 	MemorySize   int `range:"1-1024" description:"Memory Size Unit MB"`
 	MemWorker    int `range:"1-4" description:"Memory Stress Threads"`
@@ -87,12 +95,18 @@ func (s *MemoryStressChaosSpec) Create(cli cli.Client, opts ...Option) (string, 
 	}
 
 	ns := conf.Namespace
+	system := conf.System
 
-	containerInfo, err := getContainerInfoByIndex(ns, s.ContainerIdx)
+	containers, err := resourcelookup.GetSystemCache(system).GetAllContainers(ctx, ns)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get containers: %w", err)
 	}
 
+	if s.ContainerIdx < 0 || s.ContainerIdx >= len(containers) {
+		return "", fmt.Errorf("container index out of range: %d (max: %d)", s.ContainerIdx, len(containers)-1)
+	}
+
+	containerInfo := containers[s.ContainerIdx]
 	appName := containerInfo.AppLabel
 	containerName := containerInfo.ContainerName
 

@@ -2,18 +2,20 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
+	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type PodFailureSpec struct {
-	Duration  int `range:"1-60" description:"Time Unit Minute"`
-	Namespace int `range:"0-0" dynamic:"true" description:"String"`
-	AppIdx    int `range:"0-0" dynamic:"true" description:"App Index"`
+	Duration int `range:"1-60" description:"Time Unit Minute"`
+	System   int `range:"0-0" dynamic:"true" description:"String"`
+	AppIdx   int `range:"0-0" dynamic:"true" description:"App Index"`
 }
 
 func (s *PodFailureSpec) Create(cli cli.Client, opts ...Option) (string, error) {
@@ -38,12 +40,18 @@ func (s *PodFailureSpec) Create(cli cli.Client, opts ...Option) (string, error) 
 	}
 
 	ns := conf.Namespace
+	system := conf.System
 
-	appName, err := getAppLabelByIndex(ns, s.AppIdx)
+	appLabels, err := resourcelookup.GetSystemCache(system).GetAllAppLabels(ctx, ns, defaultAppLabel)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get app labels: %w", err)
 	}
 
+	if s.AppIdx < 0 || s.AppIdx >= len(appLabels) {
+		return "", fmt.Errorf("app index out of range: %d (max: %d)", s.AppIdx, len(appLabels)-1)
+	}
+
+	appName := appLabels[s.AppIdx]
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 	action := chaosmeshv1alpha1.PodFailureAction
 
@@ -52,9 +60,9 @@ func (s *PodFailureSpec) Create(cli cli.Client, opts ...Option) (string, error) 
 
 // Update PodKillSpec to use flattened app index
 type PodKillSpec struct {
-	Duration  int `range:"1-60" description:"Time Unit Minute"`
-	Namespace int `range:"0-0" dynamic:"true" description:"String"`
-	AppIdx    int `range:"0-0" dynamic:"true" description:"App Index"`
+	Duration int `range:"1-60" description:"Time Unit Minute"`
+	System   int `range:"0-0" dynamic:"true" description:"String"`
+	AppIdx   int `range:"0-0" dynamic:"true" description:"App Index"`
 }
 
 func (s *PodKillSpec) Create(cli cli.Client, opts ...Option) (string, error) {
@@ -79,12 +87,18 @@ func (s *PodKillSpec) Create(cli cli.Client, opts ...Option) (string, error) {
 	}
 
 	ns := conf.Namespace
+	system := conf.System
 
-	appName, err := getAppLabelByIndex(ns, s.AppIdx)
+	appLabels, err := resourcelookup.GetSystemCache(system).GetAllAppLabels(ctx, ns, defaultAppLabel)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get app labels: %w", err)
 	}
 
+	if s.AppIdx < 0 || s.AppIdx >= len(appLabels) {
+		return "", fmt.Errorf("app index out of range: %d (max: %d)", s.AppIdx, len(appLabels)-1)
+	}
+
+	appName := appLabels[s.AppIdx]
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 	action := chaosmeshv1alpha1.PodKillAction
 
@@ -93,7 +107,7 @@ func (s *PodKillSpec) Create(cli cli.Client, opts ...Option) (string, error) {
 
 type ContainerKillSpec struct {
 	Duration     int `range:"1-60" description:"Time Unit Minute"`
-	Namespace    int `range:"0-0" dynamic:"true" description:"String"`
+	System       int `range:"0-0" dynamic:"true" description:"String"`
 	ContainerIdx int `range:"0-0" dynamic:"true" description:"Container Index"`
 }
 
@@ -119,12 +133,18 @@ func (s *ContainerKillSpec) Create(cli cli.Client, opts ...Option) (string, erro
 	}
 
 	ns := conf.Namespace
+	system := conf.System
 
-	containerInfo, err := getContainerInfoByIndex(ns, s.ContainerIdx)
+	containers, err := resourcelookup.GetSystemCache(system).GetAllContainers(ctx, ns)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to get containers: %w", err)
 	}
 
+	if s.ContainerIdx < 0 || s.ContainerIdx >= len(containers) {
+		return "", fmt.Errorf("container index out of range: %d (max: %d)", s.ContainerIdx, len(containers)-1)
+	}
+
+	containerInfo := containers[s.ContainerIdx]
 	appName := containerInfo.AppLabel
 	containerName := containerInfo.ContainerName
 

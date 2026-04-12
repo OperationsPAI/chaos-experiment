@@ -1,7 +1,8 @@
 package handler
 
 const (
-	DefaultStartIndex = 0
+	defaultStartIndex = 0
+	defaultAppLabel   = "app"
 )
 
 const (
@@ -10,9 +11,10 @@ const (
 )
 
 const (
-	keyNamespace   = "Namespace"
+	keySystem      = "System"
 	keyApp         = "AppIdx"
 	keyMethod      = "MethodIdx"
+	keyTarget      = "MutatorTargetIdx"
 	keyEndpoint    = "EndpointIdx"
 	keyNetworkPair = "NetworkPairIdx"
 	keyContainer   = "ContainerIdx"
@@ -21,5 +23,5 @@ const (
 )
 
 const (
-	ValueNotSet = -999999
+	valueNotSet = -999999
 )

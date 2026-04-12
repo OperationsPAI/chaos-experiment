@@ -1,0 +1,53 @@
+version: "2"
+
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/LGU-SE-Internal/AegisLab
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  settings:
+    govet:
+      check-shadowing: true
+    gocritic:
+      enabled-tags:
+        - performance
+        - style
+        - experimental
+      disabled-checks:
+        - wrapperFunc
+        - dupImport
+        - rangeValCopy
+        - deferInLoop
+        - unnamedResult
+        - unnecessaryBlock
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.gocd
+      linters:
+        - gosec
+
+    # Exclude known linter issues
+    - text: "weak cryptographic primitive"
+      linters:
+        - gosec
+
+  max-issues-per-linter: 0
+  max-same-issues: 0

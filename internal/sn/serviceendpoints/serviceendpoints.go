@@ -2,12 +2,16 @@
 // System: sn
 package serviceendpoints
 
-import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
-)
-
-// ServiceEndpoint is an alias for the shared type
-type ServiceEndpoint = resourcetypes.ServiceEndpoint
+// ServiceEndpoint represents a service endpoint from ClickHouse analysis
+type ServiceEndpoint struct {
+	ServiceName    string
+	RequestMethod  string
+	ResponseStatus string
+	Route          string
+	ServerAddress  string
+	ServerPort     string
+	SpanName       string
+}
 
 // ServiceEndpoints maps service names to their endpoints
 var ServiceEndpoints = map[string][]ServiceEndpoint{
@@ -41,15 +45,6 @@ var ServiceEndpoints = map[string][]ServiceEndpoint{
 		},
 		{
 			ServiceName:    "nginx-thrift",
-			RequestMethod:  "POST",
-			ResponseStatus: "500",
-			Route:          "/wrk2-api/post/compose",
-			ServerAddress:  "compose-post-service",
-			ServerPort:     "9090",
-			SpanName:       "/wrk2-api/post/compose",
-		},
-		{
-			ServiceName:    "nginx-thrift",
 			RequestMethod:  "GET",
 			ResponseStatus: "200",
 			Route:          "/wrk2-api/user-timeline/read",
@@ -59,26 +54,8 @@ var ServiceEndpoints = map[string][]ServiceEndpoint{
 		},
 		{
 			ServiceName:    "nginx-thrift",
-			RequestMethod:  "GET",
-			ResponseStatus: "500",
-			Route:          "/wrk2-api/user-timeline/read",
-			ServerAddress:  "user-timeline-service",
-			ServerPort:     "9090",
-			SpanName:       "/wrk2-api/user-timeline/read",
-		},
-		{
-			ServiceName:    "nginx-thrift",
 			RequestMethod:  "POST",
 			ResponseStatus: "200",
-			Route:          "/wrk2-api/user/follow",
-			ServerAddress:  "social-graph-service",
-			ServerPort:     "9090",
-			SpanName:       "/wrk2-api/user/follow",
-		},
-		{
-			ServiceName:    "nginx-thrift",
-			RequestMethod:  "POST",
-			ResponseStatus: "500",
 			Route:          "/wrk2-api/user/follow",
 			ServerAddress:  "social-graph-service",
 			ServerPort:     "9090",
@@ -97,15 +74,6 @@ var ServiceEndpoints = map[string][]ServiceEndpoint{
 			ServiceName:    "nginx-thrift",
 			RequestMethod:  "POST",
 			ResponseStatus: "200",
-			Route:          "/wrk2-api/user/unfollow",
-			ServerAddress:  "social-graph-service",
-			ServerPort:     "9090",
-			SpanName:       "/wrk2-api/user/unfollow",
-		},
-		{
-			ServiceName:    "nginx-thrift",
-			RequestMethod:  "POST",
-			ResponseStatus: "500",
 			Route:          "/wrk2-api/user/unfollow",
 			ServerAddress:  "social-graph-service",
 			ServerPort:     "9090",

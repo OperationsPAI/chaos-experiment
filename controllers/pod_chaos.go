@@ -28,7 +28,7 @@ func CreatePodChaos(cli client.Client, ctx context.Context, namespace string, ap
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := podChaos.ValidateCreate()
+	create, err := podChaos.ValidateCreate(ctx, podChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -57,7 +57,7 @@ func CreatePodChaosWithContainer(cli client.Client, ctx context.Context, namespa
 		logrus.Errorf("Failed to create chaos: %v", err)
 		return "", err
 	}
-	create, err := podChaos.ValidateCreate()
+	create, err := podChaos.ValidateCreate(ctx, podChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 		return "", err
@@ -141,7 +141,7 @@ func SchedulePodChaos(cli client.Client, namespace string, appList []string, act
 	}
 
 	pp.Print("%+v", workflowChaos)
-	create, err := workflowChaos.ValidateCreate()
+	create, err := workflowChaos.ValidateCreate(context.Background(), workflowChaos)
 	if err != nil {
 		logrus.Errorf("Failed to validate create chaos: %v", err)
 	}

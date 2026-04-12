@@ -135,7 +135,7 @@ func NormalizeTrainTicketSpanName(spanName string, serviceName string) string {
 
 // Create materialized view SQL statement
 const createMaterializedViewSQL = `
-CREATE MATERIALIZED VIEW IF NOT EXISTS otel_traces_mv 
+CREATE MATERIALIZED VIEW IF NOT EXISTS otel_traces_mv
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
 PRIMARY KEY (masked_route, ServiceName, db_sql_table)
@@ -151,10 +151,10 @@ ORDER BY (
 )
 SETTINGS allow_nullable_key = 1
 POPULATE
-AS 
-WITH 
+AS
+WITH
     replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+(/.*)', '\\1') AS path
-SELECT 
+SELECT
     ResourceAttributes['service.name'] AS ServiceName,
     4294967295 - toUnixTimestamp(Timestamp) AS version,
     Timestamp,
@@ -167,29 +167,29 @@ SELECT
     SpanAttributes['url.full'] AS url_full,
     SpanAttributes['http.status_code'] AS http_status_code,
     SpanAttributes['http.target'] AS http_target,
-    
-    CASE 
-        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != ''
             THEN SpanAttributes['http.request.method']
-        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != '' 
+        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != ''
             THEN SpanAttributes['http.method']
         ELSE ''
     END AS request_method,
-    
-    CASE 
-        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != ''
             THEN SpanAttributes['http.response.status_code']
-        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != '' 
+        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != ''
             THEN SpanAttributes['http.status_code']
         ELSE ''
     END AS response_status_code,
-    
+
     CASE
         WHEN SpanAttributes['http.route'] IS NOT NULL AND SpanAttributes['http.route'] != ''
             THEN replaceRegexpAll(SpanAttributes['http.route'], '/\\{[^}]+\\}', '/*')
-            
+
         WHEN SpanAttributes['http.target'] IS NOT NULL AND SpanAttributes['http.target'] != ''
-            THEN 
+            THEN
                 CASE
                     -- New patterns first for priority matching
                     -- /api/v1/adminorderservice/adminorder/{uuid}/{id}
@@ -224,9 +224,9 @@ SELECT
                         THEN replaceRegexpAll(SpanAttributes['http.target'], '/([^/]+/[^/]+/[^/]+/)([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})', '/\\1*')
                     ELSE SpanAttributes['http.target']
                 END
-                
+
         WHEN SpanAttributes['url.full'] IS NOT NULL AND SpanAttributes['url.full'] != ''
-            THEN 
+            THEN
                 CASE
                     WHEN match(SpanAttributes['url.full'], 'https?://[^/]+(/.*)') THEN
                         CASE
@@ -253,7 +253,7 @@ SELECT
                                 THEN replaceRegexpAll(path, '(/api/v1/securityservice/securityConfigs/)[^/]+', '\\1*')
                             WHEN position(path, '/api/v1/travel2service/routes/') = 1
                                 THEN replaceRegexpAll(path, '(/api/v1/travel2service/routes/)[^/]+', '\\1*')
-                            WHEN position(path, '/api/v1/routeservice/routes/') = 1 
+                            WHEN position(path, '/api/v1/routeservice/routes/') = 1
                                  AND match(path, '/api/v1/routeservice/routes/[^/]+/[^/]+')
                                 THEN replaceRegexpAll(path, '(/api/v1/routeservice/routes/)[^/]+/[^/]+', '\\1*/*')
                             WHEN position(path, '/api/v1/orderservice/order/status/') = 1
@@ -276,7 +276,7 @@ SELECT
                                 THEN replaceRegexpAll(path, '(/api/v1/orderOtherService/orderOther/security/)[^/]+/[^/]+', '\\1*/*')
                             WHEN position(path, '/api/v1/orderOtherService/orderOther/') = 1
                                 THEN replaceRegexpAll(path, '(/api/v1/orderOtherService/orderOther/)[^/]+$', '\\1*')
-                            WHEN position(path, '/api/v1/routeservice/routes/') = 1 
+                            WHEN position(path, '/api/v1/routeservice/routes/') = 1
                                  AND NOT match(path, '/api/v1/routeservice/routes/[^/]+/[^/]+')
                                 THEN replaceRegexpAll(path, '(/api/v1/routeservice/routes/)[^/]+$', '\\1*')
                             WHEN position(path, '/api/v1/priceservice/prices/') = 1
@@ -291,19 +291,19 @@ SELECT
                 END
         ELSE ''
     END AS masked_route,
-    
+
     SpanAttributes['server.address'] AS server_address,
     SpanAttributes['server.port'] AS server_port,
     SpanAttributes['db.connection_string'] AS db_connection_string,
     SpanAttributes['db.name'] AS db_name,
     SpanAttributes['db.operation'] AS db_operation,
-    SpanAttributes['db.sql.table'] AS db_sql_table, 
+    SpanAttributes['db.sql.table'] AS db_sql_table,
     SpanAttributes['db.statement'] AS db_statement,
     SpanAttributes['db.system'] AS db_system,
     SpanAttributes['db.user'] AS db_user,
     SpanName AS span_name
 FROM otel_traces
-WHERE 
+WHERE
     ResourceAttributes['service.namespace'] = 'ts0'
     AND SpanKind IN ('Server', 'Client')
     AND mapExists(
@@ -314,7 +314,7 @@ WHERE
 
 // Create materialized view SQL statement for OpenTelemetry Demo
 const createOtelDemoMaterializedViewSQL = `
-CREATE MATERIALIZED VIEW IF NOT EXISTS otel_demo_traces_mv 
+CREATE MATERIALIZED VIEW IF NOT EXISTS otel_demo_traces_mv
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
 PRIMARY KEY (masked_route, ServiceName, db_name, rpc_service)
@@ -334,17 +334,17 @@ ORDER BY (
 )
 SETTINGS allow_nullable_key = 1
 POPULATE
-AS 
-WITH 
+AS
+WITH
     -- Extract path from url.full (without query string)
     replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+(/[^?]*)?.*', '\\1') AS url_path,
-    -- Extract query string from url.full  
+    -- Extract query string from url.full
     replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+[^?]*(\\?.*)?$', '\\1') AS url_query,
     -- Extract path from http.target (without query string)
     replaceRegexpOne(SpanAttributes['http.target'], '^([^?]*)(\\?.*)?$', '\\1') AS target_path,
     -- Extract query string from http.target
     replaceRegexpOne(SpanAttributes['http.target'], '^[^?]*(\\?.*)?$', '\\1') AS target_query
-SELECT 
+SELECT
     ResourceAttributes['service.name'] AS ServiceName,
     4294967295 - toUnixTimestamp(Timestamp) AS version,
     Timestamp,
@@ -357,37 +357,37 @@ SELECT
     SpanAttributes['url.full'] AS url_full,
     SpanAttributes['http.status_code'] AS http_status_code,
     SpanAttributes['http.target'] AS http_target,
-    
-    CASE 
-        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != ''
             THEN SpanAttributes['http.request.method']
-        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != '' 
+        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != ''
             THEN SpanAttributes['http.method']
         ELSE ''
     END AS request_method,
-    
-    CASE 
-        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != ''
             THEN SpanAttributes['http.response.status_code']
-        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != '' 
+        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != ''
             THEN SpanAttributes['http.status_code']
         ELSE ''
     END AS response_status_code,
-    
+
     CASE
         -- Priority 1: http.route (usually already parameterized like /api/products/{productId})
         WHEN SpanAttributes['http.route'] IS NOT NULL AND SpanAttributes['http.route'] != ''
-            THEN 
+            THEN
                 -- Replace {param} style with * and product IDs like /XXXXXX with /*
                 replaceRegexpAll(
                     replaceRegexpAll(SpanAttributes['http.route'], '\\{[^}]+\\}', '*'),
                     '/[A-Z0-9]{10}',
                     '/*'
                 )
-        
+
         -- Priority 2: url.full - need to extract path and mask parameters
         WHEN SpanAttributes['url.full'] IS NOT NULL AND SpanAttributes['url.full'] != ''
-            THEN 
+            THEN
                 CASE
                     -- /api/products/{productId} - product IDs are 10 char alphanumeric
                     WHEN match(url_path, '^/api/products/[A-Z0-9]+$')
@@ -405,16 +405,16 @@ SELECT
                     WHEN match(url_path, '^/ofrep/v1/evaluate/flags/[^/]+$')
                         THEN '/ofrep/v1/evaluate/flags/*'
                     -- Default: just use the path without query params
-                    ELSE 
-                        CASE 
-                            WHEN url_path != '' THEN url_path 
-                            ELSE '/' 
+                    ELSE
+                        CASE
+                            WHEN url_path != '' THEN url_path
+                            ELSE '/'
                         END
                 END
-        
+
         -- Priority 3: http.target - also need to mask parameters
         WHEN SpanAttributes['http.target'] IS NOT NULL AND SpanAttributes['http.target'] != ''
-            THEN 
+            THEN
                 CASE
                     -- /api/products/{productId}
                     WHEN match(target_path, '^/api/products/[A-Z0-9]+$')
@@ -432,22 +432,22 @@ SELECT
                     WHEN match(target_path, '^/ofrep/v1/evaluate/flags/[^/]+$')
                         THEN '/ofrep/v1/evaluate/flags/*'
                     -- Default: use target_path without query
-                    ELSE 
-                        CASE 
-                            WHEN target_path != '' THEN target_path 
+                    ELSE
+                        CASE
+                            WHEN target_path != '' THEN target_path
                             ELSE SpanAttributes['http.target']
                         END
                 END
-        
+
         ELSE ''
     END AS masked_route,
-    
+
     SpanAttributes['server.address'] AS server_address,
     SpanAttributes['server.port'] AS server_port,
     SpanAttributes['db.connection_string'] AS db_connection_string,
     SpanAttributes['db.name'] AS db_name,
     SpanAttributes['db.operation'] AS db_operation,
-    SpanAttributes['db.sql.table'] AS db_sql_table, 
+    SpanAttributes['db.sql.table'] AS db_sql_table,
     SpanAttributes['db.statement'] AS db_statement,
     SpanAttributes['db.system'] AS db_system,
     SpanAttributes['db.user'] AS db_user,
@@ -457,7 +457,7 @@ SELECT
     SpanAttributes['rpc.grpc.status_code'] AS grpc_status_code,
     SpanName AS span_name
 FROM otel_traces
-WHERE 
+WHERE
     ResourceAttributes['service.namespace'] = 'otel-demo'
     AND SpanKind IN ('Server', 'Client')
     AND mapExists(
@@ -470,7 +470,7 @@ WHERE
 // These systems use ResourceAttributes['k8s.namespace.name'] for filtering
 func createDeathStarBenchMaterializedViewSQL(namespace string, viewName string) string {
 	return fmt.Sprintf(`
-CREATE MATERIALIZED VIEW IF NOT EXISTS %s 
+CREATE MATERIALIZED VIEW IF NOT EXISTS %s
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
 PRIMARY KEY (masked_route, ServiceName, db_name, rpc_service)
@@ -490,8 +490,8 @@ ORDER BY (
 )
 SETTINGS allow_nullable_key = 1
 POPULATE
-AS 
-SELECT 
+AS
+SELECT
     ResourceAttributes['service.name'] AS ServiceName,
     4294967295 - toUnixTimestamp(Timestamp) AS version,
     Timestamp,
@@ -504,23 +504,23 @@ SELECT
     SpanAttributes['url.full'] AS url_full,
     SpanAttributes['http.status_code'] AS http_status_code,
     SpanAttributes['http.target'] AS http_target,
-    
-    CASE 
-        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != ''
             THEN SpanAttributes['http.request.method']
-        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != '' 
+        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != ''
             THEN SpanAttributes['http.method']
         ELSE ''
     END AS request_method,
-    
-    CASE 
-        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != ''
             THEN SpanAttributes['http.response.status_code']
-        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != '' 
+        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != ''
             THEN SpanAttributes['http.status_code']
         ELSE ''
     END AS response_status_code,
-    
+
     -- Path normalization for DeathStarBench systems - replace IDs with wildcards
     -- Matches: UUIDs (8-4-4-4-12 hex format) and numeric IDs (sequences of digits)
     CASE
@@ -532,13 +532,13 @@ SELECT
             THEN replaceRegexpAll(replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+(/.*)', '\\1'), '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|/\\d+', '/*')
         ELSE ''
     END AS masked_route,
-    
+
     SpanAttributes['server.address'] AS server_address,
     SpanAttributes['server.port'] AS server_port,
     SpanAttributes['db.connection_string'] AS db_connection_string,
     SpanAttributes['db.name'] AS db_name,
     SpanAttributes['db.operation'] AS db_operation,
-    SpanAttributes['db.sql.table'] AS db_sql_table, 
+    SpanAttributes['db.sql.table'] AS db_sql_table,
     SpanAttributes['db.statement'] AS db_statement,
     SpanAttributes['db.system'] AS db_system,
     SpanAttributes['db.user'] AS db_user,
@@ -548,7 +548,7 @@ SELECT
     SpanAttributes['rpc.grpc.status_code'] AS grpc_status_code,
     SpanName AS span_name
 FROM otel_traces
-WHERE 
+WHERE
     ResourceAttributes['k8s.namespace.name'] = '%s'
     AND SpanKind IN ('Server', 'Client')
     AND mapExists(
@@ -562,7 +562,7 @@ WHERE
 // Filters out OpenTelemetry collector internal spans
 func createOnlineBoutiqueMaterializedViewSQL(namespace string, viewName string) string {
 	return fmt.Sprintf(`
-CREATE MATERIALIZED VIEW IF NOT EXISTS %s 
+CREATE MATERIALIZED VIEW IF NOT EXISTS %s
 ENGINE = ReplacingMergeTree(version)
 PARTITION BY toYYYYMM(Timestamp)
 PRIMARY KEY (masked_route, ServiceName, db_name, rpc_service)
@@ -582,8 +582,8 @@ ORDER BY (
 )
 SETTINGS allow_nullable_key = 1
 POPULATE
-AS 
-SELECT 
+AS
+SELECT
     ResourceAttributes['service.name'] AS ServiceName,
     4294967295 - toUnixTimestamp(Timestamp) AS version,
     Timestamp,
@@ -596,23 +596,23 @@ SELECT
     SpanAttributes['url.full'] AS url_full,
     SpanAttributes['http.status_code'] AS http_status_code,
     SpanAttributes['http.target'] AS http_target,
-    
-    CASE 
-        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.request.method'] IS NOT NULL AND SpanAttributes['http.request.method'] != ''
             THEN SpanAttributes['http.request.method']
-        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != '' 
+        WHEN SpanAttributes['http.method'] IS NOT NULL AND SpanAttributes['http.method'] != ''
             THEN SpanAttributes['http.method']
         ELSE ''
     END AS request_method,
-    
-    CASE 
-        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != '' 
+
+    CASE
+        WHEN SpanAttributes['http.response.status_code'] IS NOT NULL AND SpanAttributes['http.response.status_code'] != ''
             THEN SpanAttributes['http.response.status_code']
-        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != '' 
+        WHEN SpanAttributes['http.status_code'] IS NOT NULL AND SpanAttributes['http.status_code'] != ''
             THEN SpanAttributes['http.status_code']
         ELSE ''
     END AS response_status_code,
-    
+
     -- Path normalization for DeathStarBench systems - replace IDs with wildcards
     -- Matches: UUIDs (8-4-4-4-12 hex format) and numeric IDs (sequences of digits)
     CASE
@@ -624,13 +624,13 @@ SELECT
             THEN replaceRegexpAll(replaceRegexpOne(SpanAttributes['url.full'], 'https?://[^/]+(/.*)', '\\1'), '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|/\\d+', '/*')
         ELSE ''
     END AS masked_route,
-    
+
     SpanAttributes['server.address'] AS server_address,
     SpanAttributes['server.port'] AS server_port,
     SpanAttributes['db.connection_string'] AS db_connection_string,
     SpanAttributes['db.name'] AS db_name,
     SpanAttributes['db.operation'] AS db_operation,
-    SpanAttributes['db.sql.table'] AS db_sql_table, 
+    SpanAttributes['db.sql.table'] AS db_sql_table,
     SpanAttributes['db.statement'] AS db_statement,
     SpanAttributes['db.system'] AS db_system,
     SpanAttributes['db.user'] AS db_user,
@@ -640,7 +640,7 @@ SELECT
     SpanAttributes['rpc.grpc.status_code'] AS grpc_status_code,
     SpanName AS span_name
 FROM otel_traces
-WHERE 
+WHERE
     ResourceAttributes['k8s.namespace.name'] = '%s'
     AND SpanKind IN ('Server', 'Client')
 	AND SpanName NOT IN (

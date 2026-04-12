@@ -10,8 +10,7 @@ import (
 type DatabaseOperation = resourcetypes.DatabaseOperation
 
 // DatabaseOperations maps service names to their database operations
-var DatabaseOperations = map[string][]DatabaseOperation{
-}
+var DatabaseOperations = map[string][]DatabaseOperation{}
 
 // GetOperationsByService returns all database operations for a service
 func GetOperationsByService(serviceName string) []DatabaseOperation {
