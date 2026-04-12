@@ -6,8 +6,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 )
 
 /*
@@ -426,7 +424,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			}
 
 			namespace := fmt.Sprintf("%s%d", prefix, DefaultStartIndex)
-			values, err := resourcelookup.GetAllAppLabels(namespace, TargetLabelKey)
+			values, err := getAllAppLabels(namespace)
 			if err != nil || len(values) == 0 {
 				return 0, 0, fmt.Errorf("failed to get labels: %w", err)
 			}
@@ -435,7 +433,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			end = len(values) - 1
 		case keyMethod:
 			// For flattened JVM methods
-			methods, err := resourcelookup.GetAllJVMMethods()
+			methods, err := getAllJVMMethodInfos()
 			if err != nil {
 				return 0, 0, fmt.Errorf("failed to get JVM methods: %w", err)
 			}
@@ -444,7 +442,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			end = len(methods) - 1
 		case keyEndpoint:
 			// For flattened HTTP endpoints
-			endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+			endpoints, err := getAllHTTPEndpointInfos()
 			if err != nil {
 				return 0, 0, fmt.Errorf("failed to get HTTP endpoints: %w", err)
 			}
@@ -453,7 +451,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			end = len(endpoints) - 1
 		case keyNetworkPair:
 			// For flattened network pairs
-			pairs, err := resourcelookup.GetAllNetworkPairs()
+			pairs, err := getAllNetworkPairs()
 			if err != nil {
 				return 0, 0, fmt.Errorf("failed to get network pairs: %w", err)
 			}
@@ -468,7 +466,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			}
 
 			namespace := fmt.Sprintf("%s%d", prefix, DefaultStartIndex)
-			containers, err := resourcelookup.GetAllContainers(namespace)
+			containers, err := getAllContainerInfos(namespace)
 			if err != nil {
 				return 0, 0, fmt.Errorf("failed to get containers: %w", err)
 			}
@@ -477,7 +475,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			end = len(containers) - 1
 		case keyDNSEndpoint:
 			// For flattened DNS endpoints
-			endpoints, err := resourcelookup.GetAllDNSEndpoints()
+			endpoints, err := getAllDNSEndpoints()
 			if err != nil {
 				return 0, 0, fmt.Errorf("failed to get DNS endpoints: %w", err)
 			}
@@ -486,7 +484,7 @@ func getValueRange(field reflect.StructField, rootNode *Node) (int, int, error) 
 			end = len(endpoints) - 1
 		case keyDatabase:
 			// For flattened database operations
-			dbOps, err := resourcelookup.GetAllDatabaseOperations()
+			dbOps, err := getAllDatabaseInfos()
 			if err != nil {
 				return 0, 0, fmt.Errorf("failed to get database operations: %w", err)
 			}

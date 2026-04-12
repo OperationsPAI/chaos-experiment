@@ -6,7 +6,6 @@ import (
 
 	chaos "github.com/LGU-SE-Internal/chaos-experiment/chaos"
 	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,21 +24,6 @@ func getDirection(directionCode int) chaosmeshv1alpha1.Direction {
 		return direction
 	}
 	return chaosmeshv1alpha1.To // Default to "To" direction
-}
-
-// Helper function to validate and get network pair from index
-func getNetworkPairByIndex(networkPairIdx int) (*resourcelookup.AppNetworkPair, error) {
-	networkPairs, err := resourcelookup.GetAllNetworkPairs()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get network pairs: %w", err)
-	}
-
-	if networkPairIdx < 0 || networkPairIdx >= len(networkPairs) {
-		return nil, fmt.Errorf("network pair index out of range: %d (max: %d)",
-			networkPairIdx, len(networkPairs)-1)
-	}
-
-	return &networkPairs[networkPairIdx], nil
 }
 
 // NetworkPartitionSpec defines network partition chaos parameters

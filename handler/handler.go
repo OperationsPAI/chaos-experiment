@@ -422,31 +422,44 @@ func (ic *InjectionConf) GetDisplayConfig() (map[string]any, error) {
 			switch instanceType.Field(i).Name {
 			case keyApp:
 				namespace := fmt.Sprintf("%s%d", prefix, DefaultStartIndex)
-				labels, err := resourcelookup.GetAllAppLabels(namespace, TargetLabelKey)
+				labels, err := getAllAppLabels(namespace)
 				if err != nil || len(labels) == 0 {
 					return nil, err
 				}
 
 				value = map[string]any{"app_name": labels[index]}
 			case keyMethod:
-				methods, err := resourcelookup.GetAllJVMMethods()
+				methods, err := getAllJVMMethodInfos()
 				if err != nil {
 					return nil, err
 				}
 
-				value = methods[index]
+				method := methods[index]
+				value = map[string]any{
+					"app_name":    method.ServiceName,
+					"class_name":  method.ClassName,
+					"method_name": method.MethodName,
+				}
 			case keyEndpoint:
-				endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+				endpoints, err := getAllHTTPEndpointInfos()
 				if err != nil {
 					return nil, err
 				}
 
-				value = endpoints[index]
+				ep := endpoints[index]
+				value = map[string]any{
+					"app_name":       ep.ServiceName,
+					"route":          ep.Route,
+					"method":         ep.Method,
+					"server_address": ep.ServerAddress,
+					"server_port":    ep.ServerPort,
+					"span_name":      ep.SpanName,
+				}
 
 				endpointMethod = endpoints[index].Method
 
 			case keyNetworkPair:
-				networkpairs, err := resourcelookup.GetAllNetworkPairs()
+				networkpairs, err := getAllNetworkPairs()
 				if err != nil {
 					return nil, err
 				}
@@ -454,26 +467,37 @@ func (ic *InjectionConf) GetDisplayConfig() (map[string]any, error) {
 				value = networkpairs[index]
 			case keyContainer:
 				namespace := fmt.Sprintf("%s%d", prefix, DefaultStartIndex)
-				containers, err := resourcelookup.GetAllContainers(namespace)
+				containers, err := getAllContainerInfos(namespace)
 				if err != nil {
 					return nil, err
 				}
 
 				value = containers[index]
 			case keyDNSEndpoint:
-				endpoints, err := resourcelookup.GetAllDNSEndpoints()
+				endpoints, err := getAllDNSEndpoints()
 				if err != nil {
 					return nil, err
 				}
 
-				value = endpoints[index]
+				ep := endpoints[index]
+				value = map[string]any{
+					"app_name":   ep.ServiceName,
+					"domain":     ep.Domain,
+					"span_names": ep.SpanNames,
+				}
 			case keyDatabase:
-				operations, err := resourcelookup.GetAllDatabaseOperations()
+				operations, err := getAllDatabaseInfos()
 				if err != nil {
 					return nil, err
 				}
 
-				value = operations[index]
+				op := operations[index]
+				value = map[string]any{
+					"app_name":       op.ServiceName,
+					"db_name":        op.DBName,
+					"table_name":     op.TableName,
+					"operation_type": op.Operation,
+				}
 			}
 
 			jsonData, err := json.Marshal(value)
@@ -595,32 +619,32 @@ func GetNsResources() (map[string]Resources, error) {
 	resourceMap := make(map[string]Resources, len(NamespacePrefixs))
 	for _, ns := range NamespacePrefixs {
 		namespace := fmt.Sprintf("%s%d", ns, DefaultStartIndex)
-		appLabels, err := resourcelookup.GetAllAppLabels(namespace, TargetLabelKey)
+		appLabels, err := getAllAppLabels(namespace)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get app labels for namespace %s: %v", ns, err)
 		}
 
-		methods, err := resourcelookup.GetAllJVMMethods()
+		methods, err := getAllJVMMethodInfos()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get JVM methods: %v", err)
 		}
 
 		jvmAppNames := make([]string, 0, len(methods))
 		for _, method := range methods {
-			jvmAppNames = append(jvmAppNames, method.AppName)
+			jvmAppNames = append(jvmAppNames, method.ServiceName)
 		}
 
-		endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+		endpoints, err := getAllHTTPEndpointInfos()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get HTTP endpoints: %v", err)
 		}
 
 		httpAppNames := make([]string, 0, len(endpoints))
 		for _, endpoint := range endpoints {
-			httpAppNames = append(httpAppNames, endpoint.AppName)
+			httpAppNames = append(httpAppNames, endpoint.ServiceName)
 		}
 
-		pairs, err := resourcelookup.GetAllNetworkPairs()
+		pairs, err := getAllNetworkPairs()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get network pairs: %v", err)
 		}
@@ -633,27 +657,27 @@ func GetNsResources() (map[string]Resources, error) {
 			})
 		}
 
-		dnsEndpoints, err := resourcelookup.GetAllDNSEndpoints()
+		dnsEndpoints, err := getAllDNSEndpoints()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get DNS endpoints: %v", err)
 		}
 
 		dnsAppNames := make([]string, 0, len(dnsEndpoints))
 		for _, endpoint := range dnsEndpoints {
-			dnsAppNames = append(dnsAppNames, endpoint.AppName)
+			dnsAppNames = append(dnsAppNames, endpoint.ServiceName)
 		}
 
-		operations, err := resourcelookup.GetAllDatabaseOperations()
+		operations, err := getAllDatabaseInfos()
 		if err != nil {
 			return nil, fmt.Errorf("failed to get database operations: %v", err)
 		}
 
 		databaseAppNames := make([]string, 0, len(operations))
 		for _, operation := range operations {
-			databaseAppNames = append(databaseAppNames, operation.AppName)
+			databaseAppNames = append(databaseAppNames, operation.ServiceName)
 		}
 
-		containers, err := resourcelookup.GetAllContainers(namespace)
+		containers, err := getAllContainerInfos(namespace)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get containers for namespace %s: %v", ns, err)
 		}

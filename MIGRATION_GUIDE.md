@@ -24,16 +24,21 @@ The new architecture provides complete decoupling between:
 ### ✅ FULLY FUNCTIONAL
 The new architecture is **actively in use**:
 - cmd/faultpoints eliminates 18+ system imports, uses registry pattern
-- Tested and working with all 6 systems (ts, otel-demo, media, hs, sn, ob)
+- Tested and working with 8 registry-registered systems (ts, otel-demo, media, hs, sn, ob, sockshop, teastore)
 - Adapter layer provides backward compatibility with existing generated files
 
 ### 🔄 In Progress
-- resourcelookup still uses OLD switch-case pattern (next to migrate)
-- Handlers still use old endpoint types
+- Handlers are being migrated behind `handler/endpoint_provider.go` (HTTP/network/DNS/database + app/container/JVM helpers)
+- `jvm_chaos.go` now uses provider-based JVM method selection (from `internal/javaclassmethods` + registry services)
+- Generate single `data.go` per system with auto-registration
 
 ### ❌ Not Started
-- Generate single `data.go` per system with auto-registration
-- Update handlers to use new endpoint types
+- Final cleanup: remove `resourcelookup` dependency from handler initialization/cache preloading path
+
+### ✅ Recently Migrated (Important)
+- `internal/resourcelookup/lookup.go` is already migrated to registry access (`registry.MustGetCurrent()`)
+- `cmd/faultpoints/main.go` is already migrated and uses adapter + registry
+- SockShop/TeaStore are now auto-registered in `internal/adapter/adapter.go`
 
 ## How to Use the New Architecture
 
@@ -269,20 +274,22 @@ func init() {
 }
 ```
 
-### Phase 2: Update resourcelookup (HIGH PRIORITY)
-Replace switch-case logic with registry-based access:
-- Use `registry.MustGetCurrent()` instead of system-specific imports
-- Implement conversion to endpoint types
-- Remove OLD functions gradually
+### Phase 2: Align with injectionv2 branch (HIGH PRIORITY)
+Large overlap exists with `injectionv2` in these areas:
+- `internal/resourcetypes`, `internal/model`, `internal/registry`, `internal/resourcelookup`
+- `tools/clickhouseanalyzer/datagenerator.go`
+- `cmd/faultpoints/main.go`
 
-### Phase 3: Update cmd/faultpoints (MEDIUM PRIORITY)
-- Remove all system-specific imports
-- Import only `internal/registry` and `internal/endpoint`
-- Use registry to access data
+Recommended merge strategy:
+1. Merge core data layers first (`resourcetypes` → `model` → `registry`)
+2. Merge generated data pipelines (`tools/clickhouseanalyzer/*`, generated `internal/*/{serviceendpoints,grpcoperations,databaseoperations}`)
+3. Merge runtime consumers last (`resourcelookup`, `cmd/faultpoints`, handlers)
+4. Run full validation after each layer to prevent conflict cascades
 
-### Phase 4: Update Handlers (LOW PRIORITY)
-- Migrate to use new endpoint types from `internal/endpoint`
-- Remove conversions from old types
+### Phase 3: Update Handlers (LOW PRIORITY)
+- ✅ Added provider layer (`handler/endpoint_provider.go`) and migrated core chaos paths (HTTP, network, DNS, JVM MySQL)
+- ✅ Migrated app/container/JVM method index resolution in handlers to provider helpers
+- Remaining: deprecate direct `resourcelookup` usage in handler initialization (`InitCaches`/`PreloadCaches`) once replacement cache strategy is finalized
 
 ## Testing the New Code
 

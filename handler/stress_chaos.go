@@ -2,11 +2,9 @@ package handler
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 
 	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -42,16 +40,11 @@ func (s *CPUStressChaosSpec) Create(cli cli.Client, opts ...Option) (string, err
 
 	ns := conf.Namespace
 
-	containers, err := resourcelookup.GetAllContainers(ns)
+	containerInfo, err := getContainerInfoByIndex(ns, s.ContainerIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get containers: %w", err)
+		return "", err
 	}
 
-	if s.ContainerIdx < 0 || s.ContainerIdx >= len(containers) {
-		return "", fmt.Errorf("container index out of range: %d (max: %d)", s.ContainerIdx, len(containers)-1)
-	}
-
-	containerInfo := containers[s.ContainerIdx]
 	appName := containerInfo.AppLabel
 	containerName := containerInfo.ContainerName
 
@@ -95,16 +88,11 @@ func (s *MemoryStressChaosSpec) Create(cli cli.Client, opts ...Option) (string, 
 
 	ns := conf.Namespace
 
-	containers, err := resourcelookup.GetAllContainers(ns)
+	containerInfo, err := getContainerInfoByIndex(ns, s.ContainerIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get containers: %w", err)
+		return "", err
 	}
 
-	if s.ContainerIdx < 0 || s.ContainerIdx >= len(containers) {
-		return "", fmt.Errorf("container index out of range: %d (max: %d)", s.ContainerIdx, len(containers)-1)
-	}
-
-	containerInfo := containers[s.ContainerIdx]
 	appName := containerInfo.AppLabel
 	containerName := containerInfo.ContainerName
 

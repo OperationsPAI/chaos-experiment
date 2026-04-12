@@ -10,20 +10,26 @@ import (
 
 	// Import old generated packages
 	hsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/databaseoperations"
-	hsendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/serviceendpoints"
 	hsgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/grpcoperations"
+	hsendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/serviceendpoints"
 	mediadb "github.com/LGU-SE-Internal/chaos-experiment/internal/media/databaseoperations"
-	mediaendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/media/serviceendpoints"
 	mediagrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/media/grpcoperations"
+	mediaendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/media/serviceendpoints"
 	obdb "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/databaseoperations"
-	obendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/serviceendpoints"
 	obgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/grpcoperations"
+	obendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/serviceendpoints"
 	oteldemodb "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/databaseoperations"
-	oteldemoendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/serviceendpoints"
 	oteldemogrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/grpcoperations"
+	oteldemoendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/serviceendpoints"
 	sndb "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/databaseoperations"
-	snendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/serviceendpoints"
 	sngrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/grpcoperations"
+	snendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/serviceendpoints"
+	sockshopdb "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/databaseoperations"
+	sockshopgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/grpcoperations"
+	sockshopendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/serviceendpoints"
+	teastoredb "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/databaseoperations"
+	teastoregrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/grpcoperations"
+	teastoreendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/serviceendpoints"
 	tsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/databaseoperations"
 	tsendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/serviceendpoints"
 )
@@ -36,12 +42,14 @@ func init() {
 	registerHotelReservation()
 	registerSocialNetwork()
 	registerOnlineBoutique()
+	registerSockShop()
+	registerTeaStore()
 }
 
 func registerTrainTicket() {
 	httpEps := convertTSEndpoints(tsendpoints.ServiceEndpoints)
 	dbOps := convertTSDBOperations(tsdb.DatabaseOperations)
-	
+
 	registry.Register(systemconfig.SystemTrainTicket, &model.SystemData{
 		SystemName:         "ts",
 		HTTPEndpoints:      httpEps,
@@ -55,7 +63,7 @@ func registerOtelDemo() {
 	httpEps := convertOtelDemoEndpoints(oteldemoendpoints.ServiceEndpoints)
 	dbOps := convertOtelDemoDBOperations(oteldemodb.DatabaseOperations)
 	rpcOps := convertOtelDemoRPCOperations(oteldemogrpc.GRPCOperations)
-	
+
 	registry.Register(systemconfig.SystemOtelDemo, &model.SystemData{
 		SystemName:         "otel-demo",
 		HTTPEndpoints:      httpEps,
@@ -69,7 +77,7 @@ func registerMediaMicroservices() {
 	httpEps := convertMediaEndpoints(mediaendpoints.ServiceEndpoints)
 	dbOps := convertMediaDBOperations(mediadb.DatabaseOperations)
 	rpcOps := convertMediaRPCOperations(mediagrpc.GRPCOperations)
-	
+
 	registry.Register(systemconfig.SystemMediaMicroservices, &model.SystemData{
 		SystemName:         "media",
 		HTTPEndpoints:      httpEps,
@@ -83,7 +91,7 @@ func registerHotelReservation() {
 	httpEps := convertHSEndpoints(hsendpoints.ServiceEndpoints)
 	dbOps := convertHSDBOperations(hsdb.DatabaseOperations)
 	rpcOps := convertHSRPCOperations(hsgrpc.GRPCOperations)
-	
+
 	registry.Register(systemconfig.SystemHotelReservation, &model.SystemData{
 		SystemName:         "hs",
 		HTTPEndpoints:      httpEps,
@@ -97,7 +105,7 @@ func registerSocialNetwork() {
 	httpEps := convertSNEndpoints(snendpoints.ServiceEndpoints)
 	dbOps := convertSNDBOperations(sndb.DatabaseOperations)
 	rpcOps := convertSNRPCOperations(sngrpc.GRPCOperations)
-	
+
 	registry.Register(systemconfig.SystemSocialNetwork, &model.SystemData{
 		SystemName:         "sn",
 		HTTPEndpoints:      httpEps,
@@ -111,13 +119,41 @@ func registerOnlineBoutique() {
 	httpEps := convertOBEndpoints(obendpoints.ServiceEndpoints)
 	dbOps := convertOBDBOperations(obdb.DatabaseOperations)
 	rpcOps := convertOBRPCOperations(obgrpc.GRPCOperations)
-	
+
 	registry.Register(systemconfig.SystemOnlineBoutique, &model.SystemData{
 		SystemName:         "ob",
 		HTTPEndpoints:      httpEps,
 		DatabaseOperations: dbOps,
 		RPCOperations:      rpcOps,
 		AllServices:        obendpoints.GetAllServices(),
+	})
+}
+
+func registerSockShop() {
+	httpEps := convertSockShopEndpoints(sockshopendpoints.ServiceEndpoints)
+	dbOps := convertSockShopDBOperations(sockshopdb.DatabaseOperations)
+	rpcOps := convertSockShopRPCOperations(sockshopgrpc.GRPCOperations)
+
+	registry.Register(systemconfig.SystemSockShop, &model.SystemData{
+		SystemName:         "sockshop",
+		HTTPEndpoints:      httpEps,
+		DatabaseOperations: dbOps,
+		RPCOperations:      rpcOps,
+		AllServices:        sockshopendpoints.GetAllServices(),
+	})
+}
+
+func registerTeaStore() {
+	httpEps := convertTeaStoreEndpoints(teastoreendpoints.ServiceEndpoints)
+	dbOps := convertTeaStoreDBOperations(teastoredb.DatabaseOperations)
+	rpcOps := convertTeaStoreRPCOperations(teastoregrpc.GRPCOperations)
+
+	registry.Register(systemconfig.SystemTeaStore, &model.SystemData{
+		SystemName:         "teastore",
+		HTTPEndpoints:      httpEps,
+		DatabaseOperations: dbOps,
+		RPCOperations:      rpcOps,
+		AllServices:        teastoreendpoints.GetAllServices(),
 	})
 }
 
@@ -479,6 +515,134 @@ func convertOBRPCOperations(old map[string][]obgrpc.GRPCOperation) map[string][]
 				ServerPort:    op.ServerPort,
 				SpanKind:      op.SpanKind,
 				SpanName:      "",
+			}
+		}
+		result[service] = converted
+	}
+	return result
+}
+
+func convertSockShopEndpoints(old map[string][]sockshopendpoints.ServiceEndpoint) map[string][]resourcetypes.HTTPEndpoint {
+	result := make(map[string][]resourcetypes.HTTPEndpoint)
+	for service, endpoints := range old {
+		converted := make([]resourcetypes.HTTPEndpoint, len(endpoints))
+		for i, ep := range endpoints {
+			converted[i] = resourcetypes.HTTPEndpoint{
+				ServiceName:    ep.ServiceName,
+				RequestMethod:  ep.RequestMethod,
+				ResponseStatus: ep.ResponseStatus,
+				Route:          ep.Route,
+				ServerAddress:  ep.ServerAddress,
+				ServerPort:     ep.ServerPort,
+				SpanName:       ep.SpanName,
+				SpanKind:       "",
+			}
+		}
+		result[service] = converted
+	}
+	return result
+}
+
+func convertSockShopDBOperations(old map[string][]sockshopdb.DatabaseOperation) map[string][]resourcetypes.DatabaseOperation {
+	result := make(map[string][]resourcetypes.DatabaseOperation)
+	for service, ops := range old {
+		converted := make([]resourcetypes.DatabaseOperation, len(ops))
+		for i, op := range ops {
+			converted[i] = resourcetypes.DatabaseOperation{
+				ServiceName:   op.ServiceName,
+				DBName:        op.DBName,
+				DBTable:       op.DBTable,
+				Operation:     op.Operation,
+				DBSystem:      op.DBSystem,
+				ServerAddress: op.ServerAddress,
+				ServerPort:    op.ServerPort,
+				SpanName:      op.SpanName,
+			}
+		}
+		result[service] = converted
+	}
+	return result
+}
+
+func convertSockShopRPCOperations(old map[string][]sockshopgrpc.GRPCOperation) map[string][]resourcetypes.RPCOperation {
+	result := make(map[string][]resourcetypes.RPCOperation)
+	for service, ops := range old {
+		converted := make([]resourcetypes.RPCOperation, len(ops))
+		for i, op := range ops {
+			converted[i] = resourcetypes.RPCOperation{
+				ServiceName:   op.ServiceName,
+				RPCSystem:     op.RPCSystem,
+				RPCService:    op.RPCService,
+				RPCMethod:     op.RPCMethod,
+				StatusCode:    op.StatusCode,
+				ServerAddress: op.ServerAddress,
+				ServerPort:    op.ServerPort,
+				SpanKind:      op.SpanKind,
+				SpanName:      op.SpanName,
+			}
+		}
+		result[service] = converted
+	}
+	return result
+}
+
+func convertTeaStoreEndpoints(old map[string][]teastoreendpoints.ServiceEndpoint) map[string][]resourcetypes.HTTPEndpoint {
+	result := make(map[string][]resourcetypes.HTTPEndpoint)
+	for service, endpoints := range old {
+		converted := make([]resourcetypes.HTTPEndpoint, len(endpoints))
+		for i, ep := range endpoints {
+			converted[i] = resourcetypes.HTTPEndpoint{
+				ServiceName:    ep.ServiceName,
+				RequestMethod:  ep.RequestMethod,
+				ResponseStatus: ep.ResponseStatus,
+				Route:          ep.Route,
+				ServerAddress:  ep.ServerAddress,
+				ServerPort:     ep.ServerPort,
+				SpanName:       ep.SpanName,
+				SpanKind:       "",
+			}
+		}
+		result[service] = converted
+	}
+	return result
+}
+
+func convertTeaStoreDBOperations(old map[string][]teastoredb.DatabaseOperation) map[string][]resourcetypes.DatabaseOperation {
+	result := make(map[string][]resourcetypes.DatabaseOperation)
+	for service, ops := range old {
+		converted := make([]resourcetypes.DatabaseOperation, len(ops))
+		for i, op := range ops {
+			converted[i] = resourcetypes.DatabaseOperation{
+				ServiceName:   op.ServiceName,
+				DBName:        op.DBName,
+				DBTable:       op.DBTable,
+				Operation:     op.Operation,
+				DBSystem:      op.DBSystem,
+				ServerAddress: op.ServerAddress,
+				ServerPort:    op.ServerPort,
+				SpanName:      op.SpanName,
+			}
+		}
+		result[service] = converted
+	}
+	return result
+}
+
+func convertTeaStoreRPCOperations(old map[string][]teastoregrpc.GRPCOperation) map[string][]resourcetypes.RPCOperation {
+	result := make(map[string][]resourcetypes.RPCOperation)
+	for service, ops := range old {
+		converted := make([]resourcetypes.RPCOperation, len(ops))
+		for i, op := range ops {
+			converted[i] = resourcetypes.RPCOperation{
+				ServiceName:   op.ServiceName,
+				RPCSystem:     op.RPCSystem,
+				RPCService:    op.RPCService,
+				RPCMethod:     op.RPCMethod,
+				StatusCode:    op.StatusCode,
+				ServerAddress: op.ServerAddress,
+				ServerPort:    op.ServerPort,
+				SpanKind:      op.SpanKind,
+				SpanName:      op.SpanName,
 			}
 		}
 		result[service] = converted

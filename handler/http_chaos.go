@@ -7,7 +7,6 @@ import (
 
 	chaos "github.com/LGU-SE-Internal/chaos-experiment/chaos"
 	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,25 +42,11 @@ func (s *HTTPRequestAbortSpec) Create(cli cli.Client, opts ...Option) (string, e
 
 	ns := conf.Namespace
 
-	endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+	endpoint, err := getHTTPChaosEndpointByIndex(s.EndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get HTTP endpoints: %w", err)
+		return "", err
 	}
-
-	if s.EndpointIdx < 0 || s.EndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.EndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.EndpointIdx]
-	serviceName := endpointPair.AppName
-
-	endpoint := &HTTPEndpoint{
-		ServiceName:   serviceName,
-		Route:         endpointPair.Route,
-		Method:        endpointPair.Method,
-		TargetService: endpointPair.ServerAddress,
-		Port:          endpointPair.ServerPort,
-	}
+	serviceName := endpoint.ServiceName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 	abort := true
@@ -108,25 +93,11 @@ func (s *HTTPResponseAbortSpec) Create(cli cli.Client, opts ...Option) (string, 
 
 	ns := conf.Namespace
 
-	endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+	endpoint, err := getHTTPChaosEndpointByIndex(s.EndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get HTTP endpoints: %w", err)
+		return "", err
 	}
-
-	if s.EndpointIdx < 0 || s.EndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.EndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.EndpointIdx]
-	serviceName := endpointPair.AppName
-
-	endpoint := &HTTPEndpoint{
-		ServiceName:   serviceName,
-		Route:         endpointPair.Route,
-		Method:        endpointPair.Method,
-		TargetService: endpointPair.ServerAddress,
-		Port:          endpointPair.ServerPort,
-	}
+	serviceName := endpoint.ServiceName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 	abort := true
@@ -174,25 +145,11 @@ func (s *HTTPRequestDelaySpec) Create(cli cli.Client, opts ...Option) (string, e
 
 	ns := conf.Namespace
 
-	endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+	endpoint, err := getHTTPChaosEndpointByIndex(s.EndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get HTTP endpoints: %w", err)
+		return "", err
 	}
-
-	if s.EndpointIdx < 0 || s.EndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.EndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.EndpointIdx]
-	serviceName := endpointPair.AppName
-
-	endpoint := &HTTPEndpoint{
-		ServiceName:   serviceName,
-		Route:         endpointPair.Route,
-		Method:        endpointPair.Method,
-		TargetService: endpointPair.ServerAddress,
-		Port:          endpointPair.ServerPort,
-	}
+	serviceName := endpoint.ServiceName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 	delay := fmt.Sprintf("%dms", s.DelayDuration)
@@ -240,25 +197,11 @@ func (s *HTTPResponseDelaySpec) Create(cli cli.Client, opts ...Option) (string, 
 
 	ns := conf.Namespace
 
-	endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+	endpoint, err := getHTTPChaosEndpointByIndex(s.EndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get HTTP endpoints: %w", err)
+		return "", err
 	}
-
-	if s.EndpointIdx < 0 || s.EndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.EndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.EndpointIdx]
-	serviceName := endpointPair.AppName
-
-	endpoint := &HTTPEndpoint{
-		ServiceName:   serviceName,
-		Route:         endpointPair.Route,
-		Method:        endpointPair.Method,
-		TargetService: endpointPair.ServerAddress,
-		Port:          endpointPair.ServerPort,
-	}
+	serviceName := endpoint.ServiceName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 	delay := fmt.Sprintf("%dms", s.DelayDuration)
@@ -314,25 +257,11 @@ func (s *HTTPResponseReplaceBodySpec) Create(cli cli.Client, opts ...Option) (st
 
 	ns := conf.Namespace
 
-	endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+	endpoint, err := getHTTPChaosEndpointByIndex(s.EndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get HTTP endpoints: %w", err)
+		return "", err
 	}
-
-	if s.EndpointIdx < 0 || s.EndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.EndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.EndpointIdx]
-	serviceName := endpointPair.AppName
-
-	endpoint := &HTTPEndpoint{
-		ServiceName:   serviceName,
-		Route:         endpointPair.Route,
-		Method:        endpointPair.Method,
-		TargetService: endpointPair.ServerAddress,
-		Port:          endpointPair.ServerPort,
-	}
+	serviceName := endpoint.ServiceName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 
@@ -384,25 +313,11 @@ func (s *HTTPResponsePatchBodySpec) Create(cli cli.Client, opts ...Option) (stri
 
 	ns := conf.Namespace
 
-	endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+	endpoint, err := getHTTPChaosEndpointByIndex(s.EndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get HTTP endpoints: %w", err)
+		return "", err
 	}
-
-	if s.EndpointIdx < 0 || s.EndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.EndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.EndpointIdx]
-	serviceName := endpointPair.AppName
-
-	endpoint := &HTTPEndpoint{
-		ServiceName:   serviceName,
-		Route:         endpointPair.Route,
-		Method:        endpointPair.Method,
-		TargetService: endpointPair.ServerAddress,
-		Port:          endpointPair.ServerPort,
-	}
+	serviceName := endpoint.ServiceName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 
@@ -448,25 +363,11 @@ func (s *HTTPRequestReplacePathSpec) Create(cli cli.Client, opts ...Option) (str
 
 	ns := conf.Namespace
 
-	endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+	endpoint, err := getHTTPChaosEndpointByIndex(s.EndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get HTTP endpoints: %w", err)
+		return "", err
 	}
-
-	if s.EndpointIdx < 0 || s.EndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.EndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.EndpointIdx]
-	serviceName := endpointPair.AppName
-
-	endpoint := &HTTPEndpoint{
-		ServiceName:   serviceName,
-		Route:         endpointPair.Route,
-		Method:        endpointPair.Method,
-		TargetService: endpointPair.ServerAddress,
-		Port:          endpointPair.ServerPort,
-	}
+	serviceName := endpoint.ServiceName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 	newPath := "/api/v2/"
@@ -514,25 +415,11 @@ func (s *HTTPRequestReplaceMethodSpec) Create(cli cli.Client, opts ...Option) (s
 
 	ns := conf.Namespace
 
-	endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+	endpoint, err := getHTTPChaosEndpointByIndex(s.EndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get HTTP endpoints: %w", err)
+		return "", err
 	}
-
-	if s.EndpointIdx < 0 || s.EndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.EndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.EndpointIdx]
-	serviceName := endpointPair.AppName
-
-	endpoint := &HTTPEndpoint{
-		ServiceName:   serviceName,
-		Route:         endpointPair.Route,
-		Method:        endpointPair.Method,
-		TargetService: endpointPair.ServerAddress,
-		Port:          endpointPair.ServerPort,
-	}
+	serviceName := endpoint.ServiceName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 
@@ -583,25 +470,11 @@ func (s *HTTPResponseReplaceCodeSpec) Create(cli cli.Client, opts ...Option) (st
 
 	ns := conf.Namespace
 
-	endpoints, err := resourcelookup.GetAllHTTPEndpoints()
+	endpoint, err := getHTTPChaosEndpointByIndex(s.EndpointIdx)
 	if err != nil {
-		return "", fmt.Errorf("failed to get HTTP endpoints: %w", err)
+		return "", err
 	}
-
-	if s.EndpointIdx < 0 || s.EndpointIdx >= len(endpoints) {
-		return "", fmt.Errorf("endpoint index out of range: %d (max: %d)", s.EndpointIdx, len(endpoints)-1)
-	}
-
-	endpointPair := endpoints[s.EndpointIdx]
-	serviceName := endpointPair.AppName
-
-	endpoint := &HTTPEndpoint{
-		ServiceName:   serviceName,
-		Route:         endpointPair.Route,
-		Method:        endpointPair.Method,
-		TargetService: endpointPair.ServerAddress,
-		Port:          endpointPair.ServerPort,
-	}
+	serviceName := endpoint.ServiceName
 
 	duration := pointer.String(strconv.Itoa(s.Duration) + "m")
 	code := GetHTTPStatusCode(s.StatusCode)
