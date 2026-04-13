@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/chaos"
+	"github.com/OperationsPAI/chaos-experiment/chaos"
 	"github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"github.com/k0kubun/pp/v3"
 	"github.com/sirupsen/logrus"

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
 )
 
 /*
@@ -209,7 +209,7 @@ func NodeToStruct[T any](n *Node) (*T, error) {
 
 	val := reflect.New(rt).Elem()
 
-	if rt.Name() == "InjectionConf" && rt.PkgPath() == "github.com/LGU-SE-Internal/chaos-experiment/handler" {
+	if rt.Name() == "InjectionConf" && rt.PkgPath() == "github.com/OperationsPAI/chaos-experiment/handler" {
 		if len(n.Children) != 1 {
 			childCount := len(n.Children)
 			childKeys := make([]string, 0, childCount)

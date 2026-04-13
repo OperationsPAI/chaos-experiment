@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	tools "github.com/LGU-SE-Internal/chaos-experiment/tools/javaanalyzer"
+	tools "github.com/OperationsPAI/chaos-experiment/tools/javaanalyzer"
 )
 
 func main() {

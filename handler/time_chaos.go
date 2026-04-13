@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
+	controllers "github.com/OperationsPAI/chaos-experiment/controllers"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )
