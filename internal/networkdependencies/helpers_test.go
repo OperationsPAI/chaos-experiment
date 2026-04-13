@@ -3,8 +3,8 @@ package networkdependencies_test
 import (
 	"testing"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/networkdependencies"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/testdata"
+	"github.com/OperationsPAI/chaos-experiment/internal/networkdependencies"
+	"github.com/OperationsPAI/chaos-experiment/internal/testdata"
 )
 
 func TestSelectNetworkTargetForService(t *testing.T) {

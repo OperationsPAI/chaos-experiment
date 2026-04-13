@@ -7,10 +7,10 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/client"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
-	"github.com/LGU-SE-Internal/chaos-experiment/utils"
+	"github.com/OperationsPAI/chaos-experiment/client"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/utils"
 	"github.com/k0kubun/pp/v3"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )

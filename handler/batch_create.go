@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 // BatchCreate creates multiple fault injections and returns their CRD names.

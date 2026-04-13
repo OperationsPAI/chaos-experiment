@@ -1,9 +1,9 @@
 package testdata
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/javaclassmethods"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/networkdependencies"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
+	"github.com/OperationsPAI/chaos-experiment/internal/javaclassmethods"
+	"github.com/OperationsPAI/chaos-experiment/internal/networkdependencies"
+	"github.com/OperationsPAI/chaos-experiment/internal/serviceendpoints"
 )
 
 // Type definitions for function types that will be mocked

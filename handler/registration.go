@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 // Re-export types so external callers can implement/use them without importing internal packages.

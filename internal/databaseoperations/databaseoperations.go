@@ -2,7 +2,7 @@
 package databaseoperations
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 // DatabaseOperation represents a database operation from ClickHouse analysis

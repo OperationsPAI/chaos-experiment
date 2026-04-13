@@ -2,7 +2,7 @@
 package javaclassmethods
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 // ClassMethodEntry represents a class-method pair from Java analysis

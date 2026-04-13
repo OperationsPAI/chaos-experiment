@@ -6,11 +6,11 @@ import (
 	"sort"
 	"text/tabwriter"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/databaseoperations"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/javaclassmethods"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/networkdependencies"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
+	"github.com/OperationsPAI/chaos-experiment/internal/databaseoperations"
+	"github.com/OperationsPAI/chaos-experiment/internal/javaclassmethods"
+	"github.com/OperationsPAI/chaos-experiment/internal/networkdependencies"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
+	"github.com/OperationsPAI/chaos-experiment/internal/serviceendpoints"
 )
 
 func main() {
