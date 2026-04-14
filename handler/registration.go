@@ -27,6 +27,8 @@ type GRPCOperationProvider = systemconfig.GRPCOperationProvider
 type GRPCOperationData = systemconfig.GRPCOperationData
 type JavaClassMethodProvider = systemconfig.JavaClassMethodProvider
 type JavaClassMethodData = systemconfig.JavaClassMethodData
+type RuntimeMutatorProvider = systemconfig.RuntimeMutatorProvider
+type RuntimeMutatorTargetData = systemconfig.RuntimeMutatorTargetData
 type NetworkPairData = systemconfig.NetworkPairData
 
 // SystemConfig is the public-facing configuration for registering a system.
@@ -125,6 +127,21 @@ func RegisterJavaClassMethodProvider(name string, provider JavaClassMethodProvid
 	}
 
 	systemconfig.GetRegistry().RegisterJavaClassMethodProvider(system, provider)
+	resourcelookup.ResetSystemCache(system)
+	return nil
+}
+
+// RegisterRuntimeMutatorProvider registers a runtime mutator provider for a system.
+func RegisterRuntimeMutatorProvider(name string, provider RuntimeMutatorProvider) error {
+	system := systemconfig.SystemType(name)
+	if err := validateRegisteredSystem(system); err != nil {
+		return err
+	}
+	if provider == nil {
+		return fmt.Errorf("runtime mutator provider must not be nil")
+	}
+
+	systemconfig.GetRegistry().RegisterRuntimeMutatorProvider(system, provider)
 	resourcelookup.ResetSystemCache(system)
 	return nil
 }

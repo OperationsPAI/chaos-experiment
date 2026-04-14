@@ -21,6 +21,7 @@ type MetadataStore interface {
 	GetDatabaseOperations(system string, serviceName string) ([]DatabaseOperationData, error)
 	GetGRPCOperations(system string, serviceName string) ([]GRPCOperationData, error)
 	GetNetworkPairs(system string) ([]NetworkPairData, error)
+	GetRuntimeMutatorTargets(system string) ([]RuntimeMutatorTargetData, error)
 }
 
 type metadataStoreRouter struct {
@@ -31,6 +32,7 @@ type metadataStoreRouter struct {
 	databaseOperations map[SystemType]DatabaseOperationProvider
 	grpcOperations     map[SystemType]GRPCOperationProvider
 	javaClassMethods   map[SystemType]JavaClassMethodProvider
+	runtimeMutators    map[SystemType]RuntimeMutatorProvider
 }
 
 var (
@@ -52,6 +54,7 @@ func newMetadataStoreRouter() *metadataStoreRouter {
 		databaseOperations: make(map[SystemType]DatabaseOperationProvider),
 		grpcOperations:     make(map[SystemType]GRPCOperationProvider),
 		javaClassMethods:   make(map[SystemType]JavaClassMethodProvider),
+		runtimeMutators:    make(map[SystemType]RuntimeMutatorProvider),
 	}
 }
 
@@ -100,6 +103,12 @@ func (m *metadataStoreRouter) RegisterJavaClassMethodProvider(system SystemType,
 	m.javaClassMethods[system] = provider
 }
 
+func (m *metadataStoreRouter) RegisterRuntimeMutatorProvider(system SystemType, provider RuntimeMutatorProvider) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.runtimeMutators[system] = provider
+}
+
 func (m *metadataStoreRouter) ClearInternal() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -107,6 +116,7 @@ func (m *metadataStoreRouter) ClearInternal() {
 	m.databaseOperations = make(map[SystemType]DatabaseOperationProvider)
 	m.grpcOperations = make(map[SystemType]GRPCOperationProvider)
 	m.javaClassMethods = make(map[SystemType]JavaClassMethodProvider)
+	m.runtimeMutators = make(map[SystemType]RuntimeMutatorProvider)
 }
 
 func (m *metadataStoreRouter) UnregisterSystem(system SystemType) {
@@ -116,6 +126,7 @@ func (m *metadataStoreRouter) UnregisterSystem(system SystemType) {
 	delete(m.databaseOperations, system)
 	delete(m.grpcOperations, system)
 	delete(m.javaClassMethods, system)
+	delete(m.runtimeMutators, system)
 }
 
 func (m *metadataStoreRouter) GetServiceEndpoints(system string, serviceName string) ([]ServiceEndpointData, error) {
@@ -239,6 +250,49 @@ func (m *metadataStoreRouter) GetNetworkPairs(system string) ([]NetworkPairData,
 	return result, nil
 }
 
+func (m *metadataStoreRouter) GetRuntimeMutatorTargets(system string) ([]RuntimeMutatorTargetData, error) {
+	if external := m.getExternal(); external != nil {
+		data, err := external.GetRuntimeMutatorTargets(system)
+		if err == nil && len(data) > 0 {
+			return data, nil
+		}
+	}
+
+	provider := m.getRuntimeMutatorProvider(SystemType(system))
+	if provider == nil {
+		return nil, nil
+	}
+
+	var result []RuntimeMutatorTargetData
+	for _, service := range provider.GetServiceNames() {
+		result = append(result, provider.GetTargetsByService(service)...)
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].AppName != result[j].AppName {
+			return result[i].AppName < result[j].AppName
+		}
+		if result[i].ClassName != result[j].ClassName {
+			return result[i].ClassName < result[j].ClassName
+		}
+		if result[i].MethodName != result[j].MethodName {
+			return result[i].MethodName < result[j].MethodName
+		}
+		if result[i].MutationType != result[j].MutationType {
+			return result[i].MutationType < result[j].MutationType
+		}
+		if result[i].MutationStrategy != result[j].MutationStrategy {
+			return result[i].MutationStrategy < result[j].MutationStrategy
+		}
+		if result[i].MutationFrom != result[j].MutationFrom {
+			return result[i].MutationFrom < result[j].MutationFrom
+		}
+		return result[i].MutationTo < result[j].MutationTo
+	})
+
+	return result, nil
+}
+
 func (m *metadataStoreRouter) getExternal() MetadataStore {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -269,6 +323,12 @@ func (m *metadataStoreRouter) getJavaClassMethodProvider(system SystemType) Java
 	return m.javaClassMethods[system]
 }
 
+func (m *metadataStoreRouter) getRuntimeMutatorProvider(system SystemType) RuntimeMutatorProvider {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.runtimeMutators[system]
+}
+
 func (m *metadataStoreRouter) listInternalServices(system SystemType) []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -293,6 +353,7 @@ func (m *metadataStoreRouter) listInternalServices(system SystemType) []string {
 	addNames(m.databaseOperations[system])
 	addNames(m.grpcOperations[system])
 	addNames(m.javaClassMethods[system])
+	addNames(m.runtimeMutators[system])
 
 	services := make([]string, 0, len(serviceSet))
 	for service := range serviceSet {

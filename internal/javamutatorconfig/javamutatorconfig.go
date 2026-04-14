@@ -1,15 +1,13 @@
-// Package javamutatorconfig provides a system-aware routing layer for JVM runtime mutator configs.
 package javamutatorconfig
 
 import (
 	"sort"
 
 	obmutator "github.com/OperationsPAI/chaos-experiment/internal/ob/mutatorconfig"
-	"github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
-	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
-
 	oteldemomutator "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/mutatorconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
 	sockshopmutator "github.com/OperationsPAI/chaos-experiment/internal/sockshop/mutatorconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 	teastoremutator "github.com/OperationsPAI/chaos-experiment/internal/teastore/mutatorconfig"
 	tsmutator "github.com/OperationsPAI/chaos-experiment/internal/ts/mutatorconfig"
 )
@@ -20,66 +18,8 @@ type MutationSpec = resourcetypes.RuntimeMutatorMutationSpec
 // ValidInjection is an alias to the shared flattened runtime mutator target type.
 type ValidInjection = resourcetypes.RuntimeMutatorTarget
 
-// ListAllValidInjections returns all valid runtime mutator targets for current system.
-func ListAllValidInjections() []ValidInjection {
-	services := getAllServicesBySystem()
-	result := make([]ValidInjection, 0)
-
-	for _, service := range services {
-		entries := getMutatorConfigByService(service)
-		for _, entry := range entries {
-			for _, mutation := range entry.Mutations {
-				result = append(result, ValidInjection{
-					AppName:    service,
-					ClassName:  entry.ClassName,
-					MethodName: entry.MethodName,
-					Mutation:   mutation,
-				})
-			}
-		}
-	}
-
-	sort.Slice(result, func(i, j int) bool {
-		if result[i].AppName != result[j].AppName {
-			return result[i].AppName < result[j].AppName
-		}
-		if result[i].ClassName != result[j].ClassName {
-			return result[i].ClassName < result[j].ClassName
-		}
-		if result[i].MethodName != result[j].MethodName {
-			return result[i].MethodName < result[j].MethodName
-		}
-		if result[i].Mutation.Type != result[j].Mutation.Type {
-			return result[i].Mutation.Type < result[j].Mutation.Type
-		}
-		if result[i].Mutation.Strategy != result[j].Mutation.Strategy {
-			return result[i].Mutation.Strategy < result[j].Mutation.Strategy
-		}
-		if result[i].Mutation.From != result[j].Mutation.From {
-			return result[i].Mutation.From < result[j].Mutation.From
-		}
-		return result[i].Mutation.To < result[j].Mutation.To
-	})
-
-	return result
-}
-
-func getAllServicesBySystem() []string {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		return tsmutator.GetAllServices()
-	case systemconfig.SystemOtelDemo:
-		return oteldemomutator.GetAllServices()
-	case systemconfig.SystemOnlineBoutique:
-		return obmutator.GetAllServices()
-	case systemconfig.SystemSockShop:
-		return sockshopmutator.GetAllServices()
-	case systemconfig.SystemTeaStore:
-		return teastoremutator.GetAllServices()
-	default:
-		return []string{}
-	}
+type staticRuntimeMutatorProvider struct {
+	targets map[string][]ValidInjection
 }
 
 type methodMutationEntry struct {
@@ -88,67 +28,199 @@ type methodMutationEntry struct {
 	Mutations  []MutationSpec
 }
 
-func getMutatorConfigByService(service string) []methodMutationEntry {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		entries := tsmutator.GetMutatorConfigByService(service)
-		result := make([]methodMutationEntry, len(entries))
-		for i, e := range entries {
-			result[i] = methodMutationEntry{
-				ClassName:  e.ClassName,
-				MethodName: e.MethodName,
-				Mutations:  convertTSMutations(e.Mutations),
-			}
-		}
-		return result
-	case systemconfig.SystemOtelDemo:
-		entries := oteldemomutator.GetMutatorConfigByService(service)
-		result := make([]methodMutationEntry, len(entries))
-		for i, e := range entries {
-			result[i] = methodMutationEntry{
-				ClassName:  e.ClassName,
-				MethodName: e.MethodName,
-				Mutations:  convertOtelMutations(e.Mutations),
-			}
-		}
-		return result
-	case systemconfig.SystemOnlineBoutique:
-		entries := obmutator.GetMutatorConfigByService(service)
-		result := make([]methodMutationEntry, len(entries))
-		for i, e := range entries {
-			result[i] = methodMutationEntry{
-				ClassName:  e.ClassName,
-				MethodName: e.MethodName,
-				Mutations:  convertOBMutations(e.Mutations),
-			}
-		}
-		return result
-	case systemconfig.SystemSockShop:
-		entries := sockshopmutator.GetMutatorConfigByService(service)
-		result := make([]methodMutationEntry, len(entries))
-		for i, e := range entries {
-			result[i] = methodMutationEntry{
-				ClassName:  e.ClassName,
-				MethodName: e.MethodName,
-				Mutations:  convertSockShopMutations(e.Mutations),
-			}
-		}
-		return result
-	case systemconfig.SystemTeaStore:
-		entries := teastoremutator.GetMutatorConfigByService(service)
-		result := make([]methodMutationEntry, len(entries))
-		for i, e := range entries {
-			result[i] = methodMutationEntry{
-				ClassName:  e.ClassName,
-				MethodName: e.MethodName,
-				Mutations:  convertTeaStoreMutations(e.Mutations),
-			}
-		}
-		return result
-	default:
-		return []methodMutationEntry{}
+func init() {
+	registry := systemconfig.GetRegistry()
+	registry.RegisterRuntimeMutatorProvider(systemconfig.SystemTrainTicket, newStaticRuntimeMutatorProvider(convertTSTargetMap()))
+	registry.RegisterRuntimeMutatorProvider(systemconfig.SystemOtelDemo, newStaticRuntimeMutatorProvider(convertOtelDemoTargetMap()))
+	registry.RegisterRuntimeMutatorProvider(systemconfig.SystemOnlineBoutique, newStaticRuntimeMutatorProvider(convertOBTargetMap()))
+	registry.RegisterRuntimeMutatorProvider(systemconfig.SystemSockShop, newStaticRuntimeMutatorProvider(convertSockShopTargetMap()))
+	registry.RegisterRuntimeMutatorProvider(systemconfig.SystemTeaStore, newStaticRuntimeMutatorProvider(convertTeaStoreTargetMap()))
+}
+
+func newStaticRuntimeMutatorProvider(targets map[string][]ValidInjection) systemconfig.RuntimeMutatorProvider {
+	return &staticRuntimeMutatorProvider{targets: targets}
+}
+
+func (p *staticRuntimeMutatorProvider) GetServiceNames() []string {
+	services := make([]string, 0, len(p.targets))
+	for service := range p.targets {
+		services = append(services, service)
 	}
+	sort.Strings(services)
+	return services
+}
+
+func (p *staticRuntimeMutatorProvider) GetTargetsByService(serviceName string) []systemconfig.RuntimeMutatorTargetData {
+	targets := p.targets[serviceName]
+	result := make([]systemconfig.RuntimeMutatorTargetData, len(targets))
+	for i, target := range targets {
+		result[i] = systemconfig.RuntimeMutatorTargetData{
+			AppName:          target.AppName,
+			ClassName:        target.ClassName,
+			MethodName:       target.MethodName,
+			MutationType:     target.Mutation.Type,
+			MutationTypeName: target.Mutation.TypeName,
+			MutationFrom:     target.Mutation.From,
+			MutationTo:       target.Mutation.To,
+			MutationStrategy: target.Mutation.Strategy,
+			Description:      target.Mutation.Description,
+		}
+	}
+	return result
+}
+
+// ListAllValidInjections returns all valid runtime mutator targets for current system.
+func ListAllValidInjections() []ValidInjection {
+	data, err := systemconfig.GetMetadataStore().GetRuntimeMutatorTargets(string(systemconfig.GetCurrentSystem()))
+	if err == nil && len(data) > 0 {
+		result := make([]ValidInjection, len(data))
+		for i, target := range data {
+			result[i] = ValidInjection{
+				AppName:    target.AppName,
+				ClassName:  target.ClassName,
+				MethodName: target.MethodName,
+				Mutation: MutationSpec{
+					Type:        target.MutationType,
+					TypeName:    target.MutationTypeName,
+					From:        target.MutationFrom,
+					To:          target.MutationTo,
+					Strategy:    target.MutationStrategy,
+					Description: target.Description,
+				},
+			}
+		}
+		return result
+	}
+	return []ValidInjection{}
+}
+
+func convertTSTargetMap() map[string][]ValidInjection {
+	return buildTargetMap(
+		tsmutator.GetAllServices,
+		func(service string) []ValidInjection {
+			return convertTSMethodMutationEntries(service, tsmutator.GetMutatorConfigByService(service))
+		},
+	)
+}
+
+func convertOtelDemoTargetMap() map[string][]ValidInjection {
+	return buildTargetMap(
+		oteldemomutator.GetAllServices,
+		func(service string) []ValidInjection {
+			return convertOtelDemoMethodMutationEntries(service, oteldemomutator.GetMutatorConfigByService(service))
+		},
+	)
+}
+
+func convertOBTargetMap() map[string][]ValidInjection {
+	return buildTargetMap(
+		obmutator.GetAllServices,
+		func(service string) []ValidInjection {
+			return convertOBMethodMutationEntries(service, obmutator.GetMutatorConfigByService(service))
+		},
+	)
+}
+
+func convertSockShopTargetMap() map[string][]ValidInjection {
+	return buildTargetMap(
+		sockshopmutator.GetAllServices,
+		func(service string) []ValidInjection {
+			return convertSockShopMethodMutationEntries(service, sockshopmutator.GetMutatorConfigByService(service))
+		},
+	)
+}
+
+func convertTeaStoreTargetMap() map[string][]ValidInjection {
+	return buildTargetMap(
+		teastoremutator.GetAllServices,
+		func(service string) []ValidInjection {
+			return convertTeaStoreMethodMutationEntries(service, teastoremutator.GetMutatorConfigByService(service))
+		},
+	)
+}
+
+func buildTargetMap(services func() []string, loader func(string) []ValidInjection) map[string][]ValidInjection {
+	allServices := services()
+	result := make(map[string][]ValidInjection, len(allServices))
+	for _, service := range allServices {
+		result[service] = loader(service)
+	}
+	return result
+}
+
+func buildValidInjections(service string, entries []methodMutationEntry) []ValidInjection {
+	result := make([]ValidInjection, 0)
+	for _, entry := range entries {
+		for _, mutation := range entry.Mutations {
+			result = append(result, ValidInjection{
+				AppName:    service,
+				ClassName:  entry.ClassName,
+				MethodName: entry.MethodName,
+				Mutation:   mutation,
+			})
+		}
+	}
+	return result
+}
+
+func convertTSMethodMutationEntries(service string, entries []tsmutator.MethodMutationEntry) []ValidInjection {
+	result := make([]methodMutationEntry, len(entries))
+	for i, entry := range entries {
+		result[i] = methodMutationEntry{
+			ClassName:  entry.ClassName,
+			MethodName: entry.MethodName,
+			Mutations:  convertTSMutations(entry.Mutations),
+		}
+	}
+	return buildValidInjections(service, result)
+}
+
+func convertOtelDemoMethodMutationEntries(service string, entries []oteldemomutator.MethodMutationEntry) []ValidInjection {
+	result := make([]methodMutationEntry, len(entries))
+	for i, entry := range entries {
+		result[i] = methodMutationEntry{
+			ClassName:  entry.ClassName,
+			MethodName: entry.MethodName,
+			Mutations:  convertOtelMutations(entry.Mutations),
+		}
+	}
+	return buildValidInjections(service, result)
+}
+
+func convertOBMethodMutationEntries(service string, entries []obmutator.MethodMutationEntry) []ValidInjection {
+	result := make([]methodMutationEntry, len(entries))
+	for i, entry := range entries {
+		result[i] = methodMutationEntry{
+			ClassName:  entry.ClassName,
+			MethodName: entry.MethodName,
+			Mutations:  convertOBMutations(entry.Mutations),
+		}
+	}
+	return buildValidInjections(service, result)
+}
+
+func convertSockShopMethodMutationEntries(service string, entries []sockshopmutator.MethodMutationEntry) []ValidInjection {
+	result := make([]methodMutationEntry, len(entries))
+	for i, entry := range entries {
+		result[i] = methodMutationEntry{
+			ClassName:  entry.ClassName,
+			MethodName: entry.MethodName,
+			Mutations:  convertSockShopMutations(entry.Mutations),
+		}
+	}
+	return buildValidInjections(service, result)
+}
+
+func convertTeaStoreMethodMutationEntries(service string, entries []teastoremutator.MethodMutationEntry) []ValidInjection {
+	result := make([]methodMutationEntry, len(entries))
+	for i, entry := range entries {
+		result[i] = methodMutationEntry{
+			ClassName:  entry.ClassName,
+			MethodName: entry.MethodName,
+			Mutations:  convertTeaStoreMutations(entry.Mutations),
+		}
+	}
+	return buildValidInjections(service, result)
 }
 
 func convertTSMutations(in []tsmutator.MutationSpec) []MutationSpec {

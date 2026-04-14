@@ -36,6 +36,10 @@ func (m *storeBackedMetadataStore) GetNetworkPairs(system string) ([]systemconfi
 	return m.pairs[system], nil
 }
 
+func (m *storeBackedMetadataStore) GetRuntimeMutatorTargets(system string) ([]systemconfig.RuntimeMutatorTargetData, error) {
+	return nil, nil
+}
+
 func TestSelectNetworkTargetForService(t *testing.T) {
 	// Setup mocks for network dependencies
 	cleanup := testdata.SetupNetworkDependenciesMock()

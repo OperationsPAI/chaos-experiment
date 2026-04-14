@@ -9,7 +9,6 @@ import (
 	"github.com/OperationsPAI/chaos-experiment/internal/databaseoperations"
 	"github.com/OperationsPAI/chaos-experiment/internal/grpcoperations"
 	"github.com/OperationsPAI/chaos-experiment/internal/javaclassmethods"
-	"github.com/OperationsPAI/chaos-experiment/internal/javamutatorconfig"
 	"github.com/OperationsPAI/chaos-experiment/internal/networkdependencies"
 	"github.com/OperationsPAI/chaos-experiment/internal/serviceendpoints"
 	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
@@ -246,20 +245,23 @@ func (s *systemCache) GetAllJVMRuntimeMutatorTargets() ([]AppRuntimeMutatorTarge
 		return s.runtimeMutatorTargets, nil
 	}
 
-	injections := javamutatorconfig.ListAllValidInjections()
-	result := make([]AppRuntimeMutatorTarget, 0, len(injections))
+	data, err := systemconfig.GetMetadataStore().GetRuntimeMutatorTargets(string(s.system))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]AppRuntimeMutatorTarget, 0, len(data))
 
-	for _, injection := range injections {
+	for _, injection := range data {
 		result = append(result, AppRuntimeMutatorTarget{
 			AppName:          injection.AppName,
 			ClassName:        injection.ClassName,
 			MethodName:       injection.MethodName,
-			MutationType:     injection.Mutation.Type,
-			MutationTypeName: injection.Mutation.TypeName,
-			MutationFrom:     injection.Mutation.From,
-			MutationTo:       injection.Mutation.To,
-			MutationStrategy: injection.Mutation.Strategy,
-			Description:      injection.Mutation.Description,
+			MutationType:     injection.MutationType,
+			MutationTypeName: injection.MutationTypeName,
+			MutationFrom:     injection.MutationFrom,
+			MutationTo:       injection.MutationTo,
+			MutationStrategy: injection.MutationStrategy,
+			Description:      injection.Description,
 		})
 	}
 
@@ -673,6 +675,7 @@ func (s *systemCache) GetContainersAndPodsByServices(ctx context.Context, namesp
 func (s *systemCache) InvalidateCache() {
 	s.appLabels = make(map[string][]string)
 	s.appMethods = []AppMethodPair{}
+	s.runtimeMutatorTargets = []AppRuntimeMutatorTarget{}
 	s.appEndpoints = []AppEndpointPair{}
 	s.networkPairs = []AppNetworkPair{}
 	s.dnsEndpoints = []AppDNSPair{}

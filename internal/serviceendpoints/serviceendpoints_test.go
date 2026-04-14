@@ -48,6 +48,10 @@ func (m *mockMetadataStore) GetNetworkPairs(system string) ([]systemconfig.Netwo
 	return nil, nil
 }
 
+func (m *mockMetadataStore) GetRuntimeMutatorTargets(system string) ([]systemconfig.RuntimeMutatorTargetData, error) {
+	return nil, nil
+}
+
 func TestDynamicServiceEndpointProvider(t *testing.T) {
 	const testSystem = systemconfig.SystemType("service-endpoints-dynamic")
 
