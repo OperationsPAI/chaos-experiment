@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/model"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/registry"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/model"
+	"github.com/OperationsPAI/chaos-experiment/internal/registry"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 // Re-export the system-data types so external callers do not need internal imports.
@@ -18,6 +18,7 @@ type SystemDatabaseOperation = resourcetypes.DatabaseOperation
 type SystemRPCOperation = resourcetypes.RPCOperation
 
 // Re-export provider interfaces and payload types for runtime registration.
+type MetadataStore = systemconfig.MetadataStore
 type ServiceEndpointProvider = systemconfig.ServiceEndpointProvider
 type ServiceEndpointData = systemconfig.ServiceEndpointData
 type DatabaseOperationProvider = systemconfig.DatabaseOperationProvider
@@ -26,6 +27,7 @@ type GRPCOperationProvider = systemconfig.GRPCOperationProvider
 type GRPCOperationData = systemconfig.GRPCOperationData
 type JavaClassMethodProvider = systemconfig.JavaClassMethodProvider
 type JavaClassMethodData = systemconfig.JavaClassMethodData
+type NetworkPairData = systemconfig.NetworkPairData
 
 // SystemConfig is the public-facing configuration for registering a system.
 type SystemConfig struct {
@@ -148,6 +150,11 @@ func IsSystemRegistered(name string) bool {
 // IsSystemDataRegistered returns true if system data has been registered for the named system.
 func IsSystemDataRegistered(name string) bool {
 	return registry.IsRegistered(systemconfig.SystemType(name))
+}
+
+// SetMetadataStore sets the global MetadataStore implementation.
+func SetMetadataStore(store MetadataStore) {
+	systemconfig.SetMetadataStore(store)
 }
 
 func validateRegisteredSystem(system systemconfig.SystemType) error {

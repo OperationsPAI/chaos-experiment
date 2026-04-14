@@ -6,15 +6,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 
-	hsgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/grpcoperations"
-	mediagrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/media/grpcoperations"
-	obgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/grpcoperations"
-	oteldemogrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/grpcoperations"
-	sngrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/grpcoperations"
-	sockshopgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/grpcoperations"
-	teastoregrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/grpcoperations"
+	hsgrpc "github.com/OperationsPAI/chaos-experiment/internal/hs/grpcoperations"
+	mediagrpc "github.com/OperationsPAI/chaos-experiment/internal/media/grpcoperations"
+	obgrpc "github.com/OperationsPAI/chaos-experiment/internal/ob/grpcoperations"
+	oteldemogrpc "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/grpcoperations"
+	sngrpc "github.com/OperationsPAI/chaos-experiment/internal/sn/grpcoperations"
+	sockshopgrpc "github.com/OperationsPAI/chaos-experiment/internal/sockshop/grpcoperations"
+	teastoregrpc "github.com/OperationsPAI/chaos-experiment/internal/teastore/grpcoperations"
 )
 
 // GRPCOperation represents a gRPC operation from ClickHouse analysis.
@@ -77,35 +77,41 @@ func (p *staticGRPCOperationProvider) GetOperationsByService(serviceName string)
 
 // GetOperationsByService returns all gRPC operations for a service based on the current system.
 func GetOperationsByService(serviceName string) []GRPCOperation {
-	provider, err := systemconfig.GetRegistry().GetGRPCOperationProvider()
-	if err != nil {
-		return []GRPCOperation{}
-	}
-
-	data := provider.GetOperationsByService(serviceName)
-	result := make([]GRPCOperation, len(data))
-	for i, operation := range data {
-		result[i] = GRPCOperation{
-			ServiceName:   operation.ServiceName,
-			RPCSystem:     operation.RPCSystem,
-			RPCService:    operation.RPCService,
-			RPCMethod:     operation.RPCMethod,
-			StatusCode:    operation.GRPCStatusCode,
-			ServerAddress: operation.ServerAddress,
-			ServerPort:    operation.ServerPort,
-			SpanKind:      operation.SpanKind,
+	data, err := systemconfig.GetMetadataStore().GetGRPCOperations(string(systemconfig.GetCurrentSystem()), serviceName)
+	if err == nil && len(data) > 0 {
+		result := make([]GRPCOperation, len(data))
+		for i, operation := range data {
+			result[i] = GRPCOperation{
+				ServiceName:   operation.ServiceName,
+				RPCSystem:     operation.RPCSystem,
+				RPCService:    operation.RPCService,
+				RPCMethod:     operation.RPCMethod,
+				StatusCode:    operation.GRPCStatusCode,
+				ServerAddress: operation.ServerAddress,
+				ServerPort:    operation.ServerPort,
+				SpanKind:      operation.SpanKind,
+			}
 		}
+		return result
 	}
-	return result
+	return []GRPCOperation{}
 }
 
 // GetAllGRPCServices returns a list of all services that perform gRPC operations.
 func GetAllGRPCServices() []string {
-	provider, err := systemconfig.GetRegistry().GetGRPCOperationProvider()
-	if err != nil {
-		return []string{}
+	names, err := systemconfig.GetMetadataStore().GetAllServiceNames(string(systemconfig.GetCurrentSystem()))
+	if err == nil && len(names) > 0 {
+		var services []string
+		for _, service := range names {
+			if len(GetOperationsByService(service)) > 0 {
+				services = append(services, service)
+			}
+		}
+		if len(services) > 0 {
+			return services
+		}
 	}
-	return provider.GetServiceNames()
+	return []string{}
 }
 
 // GetClientOperations returns all client-side gRPC operations.

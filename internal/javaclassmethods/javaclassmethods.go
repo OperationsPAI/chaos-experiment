@@ -5,14 +5,14 @@ package javaclassmethods
 import (
 	"sort"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/serviceendpoints"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 
-	objvm "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/javaclassmethods"
-	oteldemojvm "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/javaclassmethods"
-	sockshopjvm "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/javaclassmethods"
-	teastorejvm "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/javaclassmethods"
-	tsjvm "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/javaclassmethods"
+	objvm "github.com/OperationsPAI/chaos-experiment/internal/ob/javaclassmethods"
+	oteldemojvm "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/javaclassmethods"
+	sockshopjvm "github.com/OperationsPAI/chaos-experiment/internal/sockshop/javaclassmethods"
+	teastorejvm "github.com/OperationsPAI/chaos-experiment/internal/teastore/javaclassmethods"
+	tsjvm "github.com/OperationsPAI/chaos-experiment/internal/ts/javaclassmethods"
 )
 
 // ClassMethodEntry represents a class-method pair from Java analysis.
@@ -65,29 +65,22 @@ func GetClassMethodsByService(serviceName string) []ClassMethodEntry {
 		return []ClassMethodEntry{}
 	}
 
-	provider, err := systemconfig.GetRegistry().GetJavaClassMethodProvider()
-	if err != nil {
-		return []ClassMethodEntry{}
-	}
-
-	data := provider.GetClassMethodsByService(serviceName)
-	result := make([]ClassMethodEntry, len(data))
-	for i, method := range data {
-		result[i] = ClassMethodEntry{
-			ClassName:  method.ClassName,
-			MethodName: method.MethodName,
+	data, err := systemconfig.GetMetadataStore().GetJavaClassMethods(string(systemconfig.GetCurrentSystem()), serviceName)
+	if err == nil && len(data) > 0 {
+		result := make([]ClassMethodEntry, len(data))
+		for i, method := range data {
+			result[i] = ClassMethodEntry{
+				ClassName:  method.ClassName,
+				MethodName: method.MethodName,
+			}
 		}
+		return result
 	}
-	return result
+	return []ClassMethodEntry{}
 }
 
 // GetAllServices returns a list of all available service names based on the current system.
 func GetAllServices() []string {
-	provider, err := systemconfig.GetRegistry().GetJavaClassMethodProvider()
-	if err != nil {
-		return []string{}
-	}
-
 	networkServices := serviceendpoints.GetAllServices()
 	if len(networkServices) == 0 {
 		return []string{}
@@ -98,8 +91,18 @@ func GetAllServices() []string {
 		networkSet[service] = struct{}{}
 	}
 
+	var candidateServices []string
+	names, err := systemconfig.GetMetadataStore().GetAllServiceNames(string(systemconfig.GetCurrentSystem()))
+	if err == nil && len(names) > 0 {
+		for _, service := range names {
+			if len(GetClassMethodsByService(service)) > 0 {
+				candidateServices = append(candidateServices, service)
+			}
+		}
+	}
+
 	var filtered []string
-	for _, service := range provider.GetServiceNames() {
+	for _, service := range candidateServices {
 		if _, ok := networkSet[service]; ok {
 			filtered = append(filtered, service)
 		}

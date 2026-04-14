@@ -5,16 +5,16 @@ package databaseoperations
 import (
 	"sort"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 
-	hsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/databaseoperations"
-	mediadb "github.com/LGU-SE-Internal/chaos-experiment/internal/media/databaseoperations"
-	obdb "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/databaseoperations"
-	oteldemodb "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/databaseoperations"
-	sndb "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/databaseoperations"
-	sockshopdb "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/databaseoperations"
-	teastoredb "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/databaseoperations"
-	tsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/databaseoperations"
+	hsdb "github.com/OperationsPAI/chaos-experiment/internal/hs/databaseoperations"
+	mediadb "github.com/OperationsPAI/chaos-experiment/internal/media/databaseoperations"
+	obdb "github.com/OperationsPAI/chaos-experiment/internal/ob/databaseoperations"
+	oteldemodb "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/databaseoperations"
+	sndb "github.com/OperationsPAI/chaos-experiment/internal/sn/databaseoperations"
+	sockshopdb "github.com/OperationsPAI/chaos-experiment/internal/sockshop/databaseoperations"
+	teastoredb "github.com/OperationsPAI/chaos-experiment/internal/teastore/databaseoperations"
+	tsdb "github.com/OperationsPAI/chaos-experiment/internal/ts/databaseoperations"
 )
 
 // DatabaseOperation represents a database operation from ClickHouse analysis.
@@ -76,34 +76,40 @@ func (p *staticDatabaseOperationProvider) GetOperationsByService(serviceName str
 
 // GetOperationsByService returns all database operations for a service based on the current system.
 func GetOperationsByService(serviceName string) []DatabaseOperation {
-	provider, err := systemconfig.GetRegistry().GetDatabaseOperationProvider()
-	if err != nil {
-		return []DatabaseOperation{}
-	}
-
-	data := provider.GetOperationsByService(serviceName)
-	result := make([]DatabaseOperation, len(data))
-	for i, operation := range data {
-		result[i] = DatabaseOperation{
-			ServiceName:   operation.ServiceName,
-			DBName:        operation.DBName,
-			DBTable:       operation.DBTable,
-			Operation:     operation.Operation,
-			DBSystem:      operation.DBSystem,
-			ServerAddress: operation.ServerAddress,
-			ServerPort:    operation.ServerPort,
+	data, err := systemconfig.GetMetadataStore().GetDatabaseOperations(string(systemconfig.GetCurrentSystem()), serviceName)
+	if err == nil && len(data) > 0 {
+		result := make([]DatabaseOperation, len(data))
+		for i, operation := range data {
+			result[i] = DatabaseOperation{
+				ServiceName:   operation.ServiceName,
+				DBName:        operation.DBName,
+				DBTable:       operation.DBTable,
+				Operation:     operation.Operation,
+				DBSystem:      operation.DBSystem,
+				ServerAddress: operation.ServerAddress,
+				ServerPort:    operation.ServerPort,
+			}
 		}
+		return result
 	}
-	return result
+	return []DatabaseOperation{}
 }
 
 // GetAllDatabaseServices returns a list of all services that perform database operations.
 func GetAllDatabaseServices() []string {
-	provider, err := systemconfig.GetRegistry().GetDatabaseOperationProvider()
-	if err != nil {
-		return []string{}
+	names, err := systemconfig.GetMetadataStore().GetAllServiceNames(string(systemconfig.GetCurrentSystem()))
+	if err == nil && len(names) > 0 {
+		var services []string
+		for _, service := range names {
+			if len(GetOperationsByService(service)) > 0 {
+				services = append(services, service)
+			}
+		}
+		if len(services) > 0 {
+			return services
+		}
 	}
-	return provider.GetServiceNames()
+	return []string{}
 }
 
 // GetOperationsByDatabase returns all operations for a specific database.

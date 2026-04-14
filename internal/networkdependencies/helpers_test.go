@@ -3,9 +3,38 @@ package networkdependencies_test
 import (
 	"testing"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/networkdependencies"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/testdata"
+	"github.com/OperationsPAI/chaos-experiment/internal/networkdependencies"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/testdata"
 )
+
+type storeBackedMetadataStore struct {
+	pairs map[string][]systemconfig.NetworkPairData
+}
+
+func (m *storeBackedMetadataStore) GetServiceEndpoints(system string, serviceName string) ([]systemconfig.ServiceEndpointData, error) {
+	return nil, nil
+}
+
+func (m *storeBackedMetadataStore) GetAllServiceNames(system string) ([]string, error) {
+	return nil, nil
+}
+
+func (m *storeBackedMetadataStore) GetJavaClassMethods(system string, serviceName string) ([]systemconfig.JavaClassMethodData, error) {
+	return nil, nil
+}
+
+func (m *storeBackedMetadataStore) GetDatabaseOperations(system string, serviceName string) ([]systemconfig.DatabaseOperationData, error) {
+	return nil, nil
+}
+
+func (m *storeBackedMetadataStore) GetGRPCOperations(system string, serviceName string) ([]systemconfig.GRPCOperationData, error) {
+	return nil, nil
+}
+
+func (m *storeBackedMetadataStore) GetNetworkPairs(system string) ([]systemconfig.NetworkPairData, error) {
+	return m.pairs[system], nil
+}
 
 func TestSelectNetworkTargetForService(t *testing.T) {
 	// Setup mocks for network dependencies
@@ -224,5 +253,43 @@ func TestNetworkHelpersIntegration(t *testing.T) {
 
 	if !foundPair {
 		t.Errorf("GetAllServicePairs() does not contain expected pair: %s -> %s", sourceName, targetName)
+	}
+}
+
+func TestMetadataStoreNetworkPairs(t *testing.T) {
+	const testSystem = systemconfig.SystemType("network-store-system")
+
+	t.Cleanup(func() {
+		systemconfig.SetMetadataStore(nil)
+		_ = systemconfig.SetCurrentSystem(systemconfig.SystemTrainTicket)
+		_ = systemconfig.UnregisterSystem(testSystem)
+	})
+
+	if err := systemconfig.RegisterSystem(systemconfig.SystemRegistration{
+		Name:        testSystem,
+		NsPattern:   "^network-store-system\\d+$",
+		DisplayName: "NetworkStoreSystem",
+	}); err != nil {
+		t.Fatalf("RegisterSystem() error = %v", err)
+	}
+
+	systemconfig.SetMetadataStore(&storeBackedMetadataStore{
+		pairs: map[string][]systemconfig.NetworkPairData{
+			string(testSystem): {
+				{Source: "frontend", Target: "checkout"},
+			},
+		},
+	})
+
+	if err := systemconfig.SetCurrentSystem(testSystem); err != nil {
+		t.Fatalf("SetCurrentSystem() error = %v", err)
+	}
+
+	pairs := networkdependencies.GetAllServicePairs()
+	if len(pairs) != 1 {
+		t.Fatalf("GetAllServicePairs() returned %d pairs, want 1", len(pairs))
+	}
+	if pairs[0].SourceService != "frontend" || pairs[0].TargetService != "checkout" {
+		t.Fatalf("GetAllServicePairs() = %#v", pairs)
 	}
 }

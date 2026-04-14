@@ -5,16 +5,16 @@ package serviceendpoints
 import (
 	"sort"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 
-	hsendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/serviceendpoints"
-	mediaendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/media/serviceendpoints"
-	obendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/serviceendpoints"
-	oteldemoendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/serviceendpoints"
-	snendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/sn/serviceendpoints"
-	sockshopendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/serviceendpoints"
-	teastoreendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/serviceendpoints"
-	tsendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/serviceendpoints"
+	hsendpoints "github.com/OperationsPAI/chaos-experiment/internal/hs/serviceendpoints"
+	mediaendpoints "github.com/OperationsPAI/chaos-experiment/internal/media/serviceendpoints"
+	obendpoints "github.com/OperationsPAI/chaos-experiment/internal/ob/serviceendpoints"
+	oteldemoendpoints "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/serviceendpoints"
+	snendpoints "github.com/OperationsPAI/chaos-experiment/internal/sn/serviceendpoints"
+	sockshopendpoints "github.com/OperationsPAI/chaos-experiment/internal/sockshop/serviceendpoints"
+	teastoreendpoints "github.com/OperationsPAI/chaos-experiment/internal/teastore/serviceendpoints"
+	tsendpoints "github.com/OperationsPAI/chaos-experiment/internal/ts/serviceendpoints"
 )
 
 // ServiceEndpoint represents a service endpoint from ClickHouse analysis.
@@ -76,34 +76,33 @@ func (p *staticServiceEndpointProvider) GetEndpointsByService(serviceName string
 
 // GetEndpointsByService returns all endpoints for a service based on the current system.
 func GetEndpointsByService(serviceName string) []ServiceEndpoint {
-	provider, err := systemconfig.GetRegistry().GetServiceEndpointProvider()
-	if err != nil {
-		return []ServiceEndpoint{}
-	}
-
-	data := provider.GetEndpointsByService(serviceName)
-	result := make([]ServiceEndpoint, len(data))
-	for i, endpoint := range data {
-		result[i] = ServiceEndpoint{
-			ServiceName:    endpoint.ServiceName,
-			RequestMethod:  endpoint.RequestMethod,
-			ResponseStatus: endpoint.ResponseStatus,
-			Route:          endpoint.Route,
-			ServerAddress:  endpoint.ServerAddress,
-			ServerPort:     endpoint.ServerPort,
-			SpanName:       endpoint.SpanName,
+	store := systemconfig.GetMetadataStore()
+	data, err := store.GetServiceEndpoints(string(systemconfig.GetCurrentSystem()), serviceName)
+	if err == nil && len(data) > 0 {
+		result := make([]ServiceEndpoint, len(data))
+		for i, endpoint := range data {
+			result[i] = ServiceEndpoint{
+				ServiceName:    endpoint.ServiceName,
+				RequestMethod:  endpoint.RequestMethod,
+				ResponseStatus: endpoint.ResponseStatus,
+				Route:          endpoint.Route,
+				ServerAddress:  endpoint.ServerAddress,
+				ServerPort:     endpoint.ServerPort,
+				SpanName:       endpoint.SpanName,
+			}
 		}
+		return result
 	}
-	return result
+	return []ServiceEndpoint{}
 }
 
 // GetAllServices returns a list of all available service names based on the current system.
 func GetAllServices() []string {
-	provider, err := systemconfig.GetRegistry().GetServiceEndpointProvider()
-	if err != nil {
-		return []string{}
+	names, err := systemconfig.GetMetadataStore().GetAllServiceNames(string(systemconfig.GetCurrentSystem()))
+	if err == nil && len(names) > 0 {
+		return names
 	}
-	return provider.GetServiceNames()
+	return []string{}
 }
 
 func convertTSEndpointMap(tsEps map[string][]tsendpoints.ServiceEndpoint) map[string][]ServiceEndpoint {

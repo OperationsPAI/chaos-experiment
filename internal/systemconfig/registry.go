@@ -127,6 +127,9 @@ func (r *MetadataRegistry) RegisterServiceEndpointProvider(system SystemType, pr
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.serviceEndpoints[system] = provider
+	if router := getMetadataStoreRouter(); router != nil {
+		router.RegisterServiceEndpointProvider(system, provider)
+	}
 }
 
 // RegisterDatabaseOperationProvider registers a database operation provider for a system.
@@ -134,6 +137,9 @@ func (r *MetadataRegistry) RegisterDatabaseOperationProvider(system SystemType, 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.databaseOperations[system] = provider
+	if router := getMetadataStoreRouter(); router != nil {
+		router.RegisterDatabaseOperationProvider(system, provider)
+	}
 }
 
 // RegisterGRPCOperationProvider registers a gRPC operation provider for a system.
@@ -141,6 +147,9 @@ func (r *MetadataRegistry) RegisterGRPCOperationProvider(system SystemType, prov
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.grpcOperations[system] = provider
+	if router := getMetadataStoreRouter(); router != nil {
+		router.RegisterGRPCOperationProvider(system, provider)
+	}
 }
 
 // RegisterJavaClassMethodProvider registers a Java class method provider for a system.
@@ -148,6 +157,9 @@ func (r *MetadataRegistry) RegisterJavaClassMethodProvider(system SystemType, pr
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.javaClassMethods[system] = provider
+	if router := getMetadataStoreRouter(); router != nil {
+		router.RegisterJavaClassMethodProvider(system, provider)
+	}
 }
 
 // GetServiceEndpointProvider returns the service endpoint provider for the current system.
@@ -243,6 +255,9 @@ func (r *MetadataRegistry) Clear() {
 	r.databaseOperations = make(map[SystemType]DatabaseOperationProvider)
 	r.grpcOperations = make(map[SystemType]GRPCOperationProvider)
 	r.javaClassMethods = make(map[SystemType]JavaClassMethodProvider)
+	if router := getMetadataStoreRouter(); router != nil {
+		router.ClearInternal()
+	}
 }
 
 // UnregisterSystem removes all providers associated with a system.
@@ -254,4 +269,7 @@ func (r *MetadataRegistry) UnregisterSystem(system SystemType) {
 	delete(r.databaseOperations, system)
 	delete(r.grpcOperations, system)
 	delete(r.javaClassMethods, system)
+	if router := getMetadataStoreRouter(); router != nil {
+		router.UnregisterSystem(system)
+	}
 }
