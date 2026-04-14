@@ -55,6 +55,23 @@ func (m *MockGRPCOperationProvider) GetOperationsByService(serviceName string) [
 	return m.operations[serviceName]
 }
 
+// MockJavaClassMethodProvider is a mock implementation for testing.
+type MockJavaClassMethodProvider struct {
+	services []string
+	methods  map[string][]JavaClassMethodData
+}
+
+func (m *MockJavaClassMethodProvider) GetServiceNames() []string {
+	return m.services
+}
+
+func (m *MockJavaClassMethodProvider) GetClassMethodsByService(serviceName string) []JavaClassMethodData {
+	if m.methods == nil {
+		return nil
+	}
+	return m.methods[serviceName]
+}
+
 func TestMetadataRegistry(t *testing.T) {
 	// Reset the registry and system for testing
 	registry := GetRegistry()
@@ -223,5 +240,39 @@ func TestGRPCOperationProviderRegistry(t *testing.T) {
 	}
 	if ops[0].RPCService != "oteldemo.CartService" {
 		t.Errorf("Expected RPCService to be oteldemo.CartService, got %s", ops[0].RPCService)
+	}
+}
+
+func TestJavaClassMethodProviderRegistry(t *testing.T) {
+	registry := GetRegistry()
+	registry.Clear()
+	_ = SetCurrentSystem(SystemTrainTicket)
+
+	mockProvider := &MockJavaClassMethodProvider{
+		services: []string{"ts-order-service"},
+		methods: map[string][]JavaClassMethodData{
+			"ts-order-service": {
+				{ClassName: "order.service.OrderServiceImpl", MethodName: "createOrder"},
+			},
+		},
+	}
+
+	registry.RegisterJavaClassMethodProvider(SystemTrainTicket, mockProvider)
+
+	if !registry.HasJavaClassMethodProvider() {
+		t.Error("HasJavaClassMethodProvider() should return true after registration")
+	}
+
+	provider, err := registry.GetJavaClassMethodProvider()
+	if err != nil {
+		t.Fatalf("GetJavaClassMethodProvider() error = %v", err)
+	}
+
+	methods := provider.GetClassMethodsByService("ts-order-service")
+	if len(methods) != 1 {
+		t.Fatalf("Expected 1 method, got %d", len(methods))
+	}
+	if methods[0].MethodName != "createOrder" {
+		t.Fatalf("Expected MethodName to be createOrder, got %s", methods[0].MethodName)
 	}
 }

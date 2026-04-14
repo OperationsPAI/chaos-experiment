@@ -350,3 +350,75 @@ func TestParseSystemType(t *testing.T) {
 		})
 	}
 }
+
+func TestRegisterSystemLifecycle(t *testing.T) {
+	const testSystem = SystemType("dynamic-test-system")
+
+	t.Cleanup(func() {
+		_ = SetCurrentSystem(SystemTrainTicket)
+		_ = UnregisterSystem(testSystem)
+	})
+
+	if IsRegistered(testSystem) {
+		t.Fatalf("test system %q should not be pre-registered", testSystem)
+	}
+
+	reg := SystemRegistration{
+		Name:        testSystem,
+		NsPattern:   "^dynamic-test-system\\d+$",
+		DisplayName: "DynamicTestSystem",
+	}
+
+	if err := RegisterSystem(reg); err != nil {
+		t.Fatalf("RegisterSystem() error = %v", err)
+	}
+
+	if !IsRegistered(testSystem) {
+		t.Fatalf("IsRegistered() = false, want true")
+	}
+
+	gotReg := GetRegistration(testSystem)
+	if gotReg == nil {
+		t.Fatalf("GetRegistration() returned nil")
+	}
+	if gotReg.DisplayName != reg.DisplayName {
+		t.Fatalf("GetRegistration().DisplayName = %q, want %q", gotReg.DisplayName, reg.DisplayName)
+	}
+
+	parsed, err := ParseSystemType(string(testSystem))
+	if err != nil {
+		t.Fatalf("ParseSystemType() error = %v", err)
+	}
+	if parsed != testSystem {
+		t.Fatalf("ParseSystemType() = %q, want %q", parsed, testSystem)
+	}
+
+	if err := SetCurrentSystem(testSystem); err != nil {
+		t.Fatalf("SetCurrentSystem() error = %v", err)
+	}
+	if GetCurrentSystem() != testSystem {
+		t.Fatalf("GetCurrentSystem() = %q, want %q", GetCurrentSystem(), testSystem)
+	}
+
+	namespace, err := GetNamespaceByIndex(testSystem, 7)
+	if err != nil {
+		t.Fatalf("GetNamespaceByIndex() error = %v", err)
+	}
+	if namespace != "dynamic-test-system7" {
+		t.Fatalf("GetNamespaceByIndex() = %q, want %q", namespace, "dynamic-test-system7")
+	}
+
+	if err := RegisterSystem(reg); err == nil {
+		t.Fatal("RegisterSystem() should reject duplicate registrations")
+	}
+
+	if err := UnregisterSystem(testSystem); err != nil {
+		t.Fatalf("UnregisterSystem() error = %v", err)
+	}
+	if IsRegistered(testSystem) {
+		t.Fatal("IsRegistered() = true after unregister")
+	}
+	if GetCurrentSystem() != SystemTrainTicket {
+		t.Fatalf("GetCurrentSystem() = %q after unregister, want %q", GetCurrentSystem(), SystemTrainTicket)
+	}
+}

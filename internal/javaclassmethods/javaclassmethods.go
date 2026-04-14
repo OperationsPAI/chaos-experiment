@@ -1,5 +1,5 @@
 // Package javaclassmethods provides a system-aware routing layer for Java class method data.
-// This package delegates to the appropriate system-specific package based on the current system configuration.
+// This package delegates to registered providers instead of hard-coded switch statements.
 package javaclassmethods
 
 import (
@@ -15,71 +15,91 @@ import (
 	tsjvm "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/javaclassmethods"
 )
 
-// ClassMethodEntry represents a class-method pair from Java analysis
+// ClassMethodEntry represents a class-method pair from Java analysis.
 type ClassMethodEntry struct {
 	ClassName  string
 	MethodName string
 }
 
-// GetClassMethodsByService returns all class-method pairs for a service based on current system
+type staticJavaClassMethodProvider struct {
+	methods map[string][]ClassMethodEntry
+}
+
+func init() {
+	registry := systemconfig.GetRegistry()
+	registry.RegisterJavaClassMethodProvider(systemconfig.SystemTrainTicket, newStaticJavaClassMethodProvider(convertTSMethodMap()))
+	registry.RegisterJavaClassMethodProvider(systemconfig.SystemOtelDemo, newStaticJavaClassMethodProvider(convertOtelDemoMethodMap()))
+	registry.RegisterJavaClassMethodProvider(systemconfig.SystemOnlineBoutique, newStaticJavaClassMethodProvider(convertOBMethodMap()))
+	registry.RegisterJavaClassMethodProvider(systemconfig.SystemSockShop, newStaticJavaClassMethodProvider(convertSockShopMethodMap()))
+	registry.RegisterJavaClassMethodProvider(systemconfig.SystemTeaStore, newStaticJavaClassMethodProvider(convertTeaStoreMethodMap()))
+}
+
+func newStaticJavaClassMethodProvider(methods map[string][]ClassMethodEntry) systemconfig.JavaClassMethodProvider {
+	return &staticJavaClassMethodProvider{methods: methods}
+}
+
+func (p *staticJavaClassMethodProvider) GetServiceNames() []string {
+	services := make([]string, 0, len(p.methods))
+	for service := range p.methods {
+		services = append(services, service)
+	}
+	sort.Strings(services)
+	return services
+}
+
+func (p *staticJavaClassMethodProvider) GetClassMethodsByService(serviceName string) []systemconfig.JavaClassMethodData {
+	methods := p.methods[serviceName]
+	result := make([]systemconfig.JavaClassMethodData, len(methods))
+	for i, method := range methods {
+		result[i] = systemconfig.JavaClassMethodData{
+			ClassName:  method.ClassName,
+			MethodName: method.MethodName,
+		}
+	}
+	return result
+}
+
+// GetClassMethodsByService returns all class-method pairs for a service based on the current system.
 func GetClassMethodsByService(serviceName string) []ClassMethodEntry {
 	if !isNetworkServiceName(serviceName) {
 		return []ClassMethodEntry{}
 	}
 
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		tsMethods := tsjvm.GetClassMethodsByService(serviceName)
-		return convertTSMethods(tsMethods)
-	case systemconfig.SystemOtelDemo:
-		otelMethods := oteldemojvm.GetClassMethodsByService(serviceName)
-		return convertOtelDemoMethods(otelMethods)
-	case systemconfig.SystemOnlineBoutique:
-		obMethods := objvm.GetClassMethodsByService(serviceName)
-		return convertOBMethods(obMethods)
-	case systemconfig.SystemSockShop:
-		sockshopMethods := sockshopjvm.GetClassMethodsByService(serviceName)
-		return convertSockShopMethods(sockshopMethods)
-	case systemconfig.SystemTeaStore:
-		teastoreMethods := teastorejvm.GetClassMethodsByService(serviceName)
-		return convertTeaStoreMethods(teastoreMethods)
-	default:
+	provider, err := systemconfig.GetRegistry().GetJavaClassMethodProvider()
+	if err != nil {
 		return []ClassMethodEntry{}
 	}
+
+	data := provider.GetClassMethodsByService(serviceName)
+	result := make([]ClassMethodEntry, len(data))
+	for i, method := range data {
+		result[i] = ClassMethodEntry{
+			ClassName:  method.ClassName,
+			MethodName: method.MethodName,
+		}
+	}
+	return result
 }
 
-// GetAllServices returns a list of all available service names based on current system
+// GetAllServices returns a list of all available service names based on the current system.
 func GetAllServices() []string {
+	provider, err := systemconfig.GetRegistry().GetJavaClassMethodProvider()
+	if err != nil {
+		return []string{}
+	}
+
 	networkServices := serviceendpoints.GetAllServices()
 	if len(networkServices) == 0 {
 		return []string{}
 	}
 
 	networkSet := make(map[string]struct{}, len(networkServices))
-	for _, name := range networkServices {
-		networkSet[name] = struct{}{}
+	for _, service := range networkServices {
+		networkSet[service] = struct{}{}
 	}
 
-	system := systemconfig.GetCurrentSystem()
-	var jvmServices []string
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		jvmServices = tsjvm.GetAllServices()
-	case systemconfig.SystemOtelDemo:
-		jvmServices = oteldemojvm.GetAllServices()
-	case systemconfig.SystemOnlineBoutique:
-		jvmServices = objvm.GetAllServices()
-	case systemconfig.SystemSockShop:
-		jvmServices = sockshopjvm.GetAllServices()
-	case systemconfig.SystemTeaStore:
-		jvmServices = teastorejvm.GetAllServices()
-	default:
-		return []string{}
-	}
-
-	filtered := make([]string, 0, len(jvmServices))
-	for _, service := range jvmServices {
+	var filtered []string
+	for _, service := range provider.GetServiceNames() {
 		if _, ok := networkSet[service]; ok {
 			filtered = append(filtered, service)
 		}
@@ -100,7 +120,61 @@ func isNetworkServiceName(serviceName string) bool {
 	return false
 }
 
-// convertTSMethods converts ts-specific methods to the common type
+func convertTSMethodMap() map[string][]ClassMethodEntry {
+	return buildMethodMap(
+		tsjvm.GetAllServices,
+		func(service string) []ClassMethodEntry {
+			return convertTSMethods(tsjvm.GetClassMethodsByService(service))
+		},
+	)
+}
+
+func convertOtelDemoMethodMap() map[string][]ClassMethodEntry {
+	return buildMethodMap(
+		oteldemojvm.GetAllServices,
+		func(service string) []ClassMethodEntry {
+			return convertOtelDemoMethods(oteldemojvm.GetClassMethodsByService(service))
+		},
+	)
+}
+
+func convertOBMethodMap() map[string][]ClassMethodEntry {
+	return buildMethodMap(
+		objvm.GetAllServices,
+		func(service string) []ClassMethodEntry {
+			return convertOBMethods(objvm.GetClassMethodsByService(service))
+		},
+	)
+}
+
+func convertSockShopMethodMap() map[string][]ClassMethodEntry {
+	return buildMethodMap(
+		sockshopjvm.GetAllServices,
+		func(service string) []ClassMethodEntry {
+			return convertSockShopMethods(sockshopjvm.GetClassMethodsByService(service))
+		},
+	)
+}
+
+func convertTeaStoreMethodMap() map[string][]ClassMethodEntry {
+	return buildMethodMap(
+		teastorejvm.GetAllServices,
+		func(service string) []ClassMethodEntry {
+			return convertTeaStoreMethods(teastorejvm.GetClassMethodsByService(service))
+		},
+	)
+}
+
+func buildMethodMap(services func() []string, loader func(string) []ClassMethodEntry) map[string][]ClassMethodEntry {
+	allServices := services()
+	result := make(map[string][]ClassMethodEntry, len(allServices))
+	for _, service := range allServices {
+		result[service] = loader(service)
+	}
+	return result
+}
+
+// convertTSMethods converts ts-specific methods to the common type.
 func convertTSMethods(tsMethods []tsjvm.ClassMethodEntry) []ClassMethodEntry {
 	result := make([]ClassMethodEntry, len(tsMethods))
 	for i, m := range tsMethods {
@@ -112,7 +186,7 @@ func convertTSMethods(tsMethods []tsjvm.ClassMethodEntry) []ClassMethodEntry {
 	return result
 }
 
-// convertOtelDemoMethods converts otel-demo-specific methods to the common type
+// convertOtelDemoMethods converts otel-demo-specific methods to the common type.
 func convertOtelDemoMethods(otelMethods []oteldemojvm.ClassMethodEntry) []ClassMethodEntry {
 	result := make([]ClassMethodEntry, len(otelMethods))
 	for i, m := range otelMethods {
@@ -124,7 +198,7 @@ func convertOtelDemoMethods(otelMethods []oteldemojvm.ClassMethodEntry) []ClassM
 	return result
 }
 
-// convertOBMethods converts ob-specific methods to the common type
+// convertOBMethods converts ob-specific methods to the common type.
 func convertOBMethods(obMethods []objvm.ClassMethodEntry) []ClassMethodEntry {
 	result := make([]ClassMethodEntry, len(obMethods))
 	for i, m := range obMethods {
@@ -136,7 +210,7 @@ func convertOBMethods(obMethods []objvm.ClassMethodEntry) []ClassMethodEntry {
 	return result
 }
 
-// convertSockShopMethods converts sockshop-specific methods to the common type
+// convertSockShopMethods converts sockshop-specific methods to the common type.
 func convertSockShopMethods(sockshopMethods []sockshopjvm.ClassMethodEntry) []ClassMethodEntry {
 	result := make([]ClassMethodEntry, len(sockshopMethods))
 	for i, m := range sockshopMethods {
@@ -148,7 +222,7 @@ func convertSockShopMethods(sockshopMethods []sockshopjvm.ClassMethodEntry) []Cl
 	return result
 }
 
-// convertTeaStoreMethods converts teastore-specific methods to the common type
+// convertTeaStoreMethods converts teastore-specific methods to the common type.
 func convertTeaStoreMethods(teastoreMethods []teastorejvm.ClassMethodEntry) []ClassMethodEntry {
 	result := make([]ClassMethodEntry, len(teastoreMethods))
 	for i, m := range teastoreMethods {

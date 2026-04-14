@@ -1,6 +1,6 @@
 // Package metadataaccess provides a unified interface for accessing system-specific metadata.
 // It uses the systemconfig package to determine the current system and routes calls to
-// the appropriate underlying data package.
+// the appropriate registered metadata accessors.
 package metadataaccess
 
 import (
@@ -9,7 +9,7 @@ import (
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
 )
 
-// ServiceEndpoint represents a service endpoint from trace analysis
+// ServiceEndpoint represents a service endpoint from trace analysis.
 type ServiceEndpoint struct {
 	ServiceName    string
 	RequestMethod  string
@@ -19,7 +19,7 @@ type ServiceEndpoint struct {
 	ServerPort     string
 }
 
-// DatabaseOperation represents a database operation from trace analysis
+// DatabaseOperation represents a database operation from trace analysis.
 type DatabaseOperation struct {
 	ServiceName   string
 	DBName        string
@@ -30,7 +30,7 @@ type DatabaseOperation struct {
 	ServerPort    string
 }
 
-// GRPCOperation represents a gRPC operation from trace analysis
+// GRPCOperation represents a gRPC operation from trace analysis.
 type GRPCOperation struct {
 	ServiceName    string
 	RPCSystem      string
@@ -42,49 +42,44 @@ type GRPCOperation struct {
 	SpanKind       string
 }
 
-// JavaClassMethod represents a Java class method for JVM chaos
+// JavaClassMethod represents a Java class method for JVM chaos.
 type JavaClassMethod struct {
 	ClassName  string
 	MethodName string
 }
 
-// ServiceEndpointAccessor defines the interface for service endpoint access
+// ServiceEndpointAccessor defines the interface for service endpoint access.
 type ServiceEndpointAccessor interface {
 	GetEndpointsByService(serviceName string) []ServiceEndpoint
 	GetAllServices() []string
 }
 
-// DatabaseOperationAccessor defines the interface for database operation access
+// DatabaseOperationAccessor defines the interface for database operation access.
 type DatabaseOperationAccessor interface {
 	GetOperationsByService(serviceName string) []DatabaseOperation
 	GetAllDatabaseServices() []string
 }
 
-// GRPCOperationAccessor defines the interface for gRPC operation access
+// GRPCOperationAccessor defines the interface for gRPC operation access.
 type GRPCOperationAccessor interface {
 	GetOperationsByService(serviceName string) []GRPCOperation
 	GetAllGRPCServices() []string
 }
 
-// JavaMethodAccessor defines the interface for Java method access
+// JavaMethodAccessor defines the interface for Java method access.
 type JavaMethodAccessor interface {
 	GetClassMethodsByService(serviceName string) []JavaClassMethod
 	GetAllServices() []string
 }
 
-// MetadataAccessor provides unified access to system-specific metadata
+// MetadataAccessor provides unified access to system-specific metadata.
 type MetadataAccessor struct {
 	mu sync.RWMutex
 
-	// TrainTicket system accessors
-	tsServiceEndpoints   ServiceEndpointAccessor
-	tsDatabaseOperations DatabaseOperationAccessor
-	tsJavaMethods        JavaMethodAccessor
-
-	// OtelDemo system accessors
-	otelServiceEndpoints   ServiceEndpointAccessor
-	otelDatabaseOperations DatabaseOperationAccessor
-	otelGRPCOperations     GRPCOperationAccessor
+	serviceEndpoints   map[systemconfig.SystemType]ServiceEndpointAccessor
+	databaseOperations map[systemconfig.SystemType]DatabaseOperationAccessor
+	grpcOperations     map[systemconfig.SystemType]GRPCOperationAccessor
+	javaMethods        map[systemconfig.SystemType]JavaMethodAccessor
 }
 
 var (
@@ -92,235 +87,204 @@ var (
 	accessorOnce sync.Once
 )
 
-// GetAccessor returns the singleton metadata accessor
+// GetAccessor returns the singleton metadata accessor.
 func GetAccessor() *MetadataAccessor {
 	accessorOnce.Do(func() {
-		accessor = &MetadataAccessor{}
+		accessor = &MetadataAccessor{
+			serviceEndpoints:   make(map[systemconfig.SystemType]ServiceEndpointAccessor),
+			databaseOperations: make(map[systemconfig.SystemType]DatabaseOperationAccessor),
+			grpcOperations:     make(map[systemconfig.SystemType]GRPCOperationAccessor),
+			javaMethods:        make(map[systemconfig.SystemType]JavaMethodAccessor),
+		}
 	})
 	return accessor
 }
 
-// RegisterTrainTicketServiceEndpoints registers the TrainTicket service endpoint accessor
+// RegisterServiceEndpoints registers a service endpoint accessor for a system.
+func (m *MetadataAccessor) RegisterServiceEndpoints(system systemconfig.SystemType, accessor ServiceEndpointAccessor) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.serviceEndpoints[system] = accessor
+}
+
+// RegisterDatabaseOperations registers a database operation accessor for a system.
+func (m *MetadataAccessor) RegisterDatabaseOperations(system systemconfig.SystemType, accessor DatabaseOperationAccessor) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.databaseOperations[system] = accessor
+}
+
+// RegisterGRPCOperations registers a gRPC operation accessor for a system.
+func (m *MetadataAccessor) RegisterGRPCOperations(system systemconfig.SystemType, accessor GRPCOperationAccessor) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.grpcOperations[system] = accessor
+}
+
+// RegisterJavaMethods registers a Java method accessor for a system.
+func (m *MetadataAccessor) RegisterJavaMethods(system systemconfig.SystemType, accessor JavaMethodAccessor) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.javaMethods[system] = accessor
+}
+
+// RegisterTrainTicketServiceEndpoints registers the TrainTicket service endpoint accessor.
 func (m *MetadataAccessor) RegisterTrainTicketServiceEndpoints(accessor ServiceEndpointAccessor) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.tsServiceEndpoints = accessor
+	m.RegisterServiceEndpoints(systemconfig.SystemTrainTicket, accessor)
 }
 
-// RegisterTrainTicketDatabaseOperations registers the TrainTicket database operation accessor
+// RegisterTrainTicketDatabaseOperations registers the TrainTicket database operation accessor.
 func (m *MetadataAccessor) RegisterTrainTicketDatabaseOperations(accessor DatabaseOperationAccessor) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.tsDatabaseOperations = accessor
+	m.RegisterDatabaseOperations(systemconfig.SystemTrainTicket, accessor)
 }
 
-// RegisterTrainTicketJavaMethods registers the TrainTicket Java method accessor
+// RegisterTrainTicketJavaMethods registers the TrainTicket Java method accessor.
 func (m *MetadataAccessor) RegisterTrainTicketJavaMethods(accessor JavaMethodAccessor) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.tsJavaMethods = accessor
+	m.RegisterJavaMethods(systemconfig.SystemTrainTicket, accessor)
 }
 
-// RegisterOtelDemoServiceEndpoints registers the OtelDemo service endpoint accessor
+// RegisterOtelDemoServiceEndpoints registers the OtelDemo service endpoint accessor.
 func (m *MetadataAccessor) RegisterOtelDemoServiceEndpoints(accessor ServiceEndpointAccessor) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.otelServiceEndpoints = accessor
+	m.RegisterServiceEndpoints(systemconfig.SystemOtelDemo, accessor)
 }
 
-// RegisterOtelDemoDatabaseOperations registers the OtelDemo database operation accessor
+// RegisterOtelDemoDatabaseOperations registers the OtelDemo database operation accessor.
 func (m *MetadataAccessor) RegisterOtelDemoDatabaseOperations(accessor DatabaseOperationAccessor) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.otelDatabaseOperations = accessor
+	m.RegisterDatabaseOperations(systemconfig.SystemOtelDemo, accessor)
 }
 
-// RegisterOtelDemoGRPCOperations registers the OtelDemo gRPC operation accessor
+// RegisterOtelDemoGRPCOperations registers the OtelDemo gRPC operation accessor.
 func (m *MetadataAccessor) RegisterOtelDemoGRPCOperations(accessor GRPCOperationAccessor) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.otelGRPCOperations = accessor
+	m.RegisterGRPCOperations(systemconfig.SystemOtelDemo, accessor)
 }
 
-// GetEndpointsByService returns endpoints for a service based on current system
+// GetEndpointsByService returns endpoints for a service based on the current system.
 func (m *MetadataAccessor) GetEndpointsByService(serviceName string) []ServiceEndpoint {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		if m.tsServiceEndpoints != nil {
-			return m.tsServiceEndpoints.GetEndpointsByService(serviceName)
-		}
-	case systemconfig.SystemOtelDemo:
-		if m.otelServiceEndpoints != nil {
-			return m.otelServiceEndpoints.GetEndpointsByService(serviceName)
-		}
+	if accessor := m.serviceEndpoints[systemconfig.GetCurrentSystem()]; accessor != nil {
+		return accessor.GetEndpointsByService(serviceName)
 	}
 	return nil
 }
 
-// GetAllServices returns all services based on current system
+// GetAllServices returns all services based on the current system.
 func (m *MetadataAccessor) GetAllServices() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		if m.tsServiceEndpoints != nil {
-			return m.tsServiceEndpoints.GetAllServices()
-		}
-	case systemconfig.SystemOtelDemo:
-		if m.otelServiceEndpoints != nil {
-			return m.otelServiceEndpoints.GetAllServices()
-		}
+	if accessor := m.serviceEndpoints[systemconfig.GetCurrentSystem()]; accessor != nil {
+		return accessor.GetAllServices()
 	}
 	return nil
 }
 
-// GetDatabaseOperationsByService returns database operations for a service based on current system
+// GetDatabaseOperationsByService returns database operations for a service based on the current system.
 func (m *MetadataAccessor) GetDatabaseOperationsByService(serviceName string) []DatabaseOperation {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		if m.tsDatabaseOperations != nil {
-			return m.tsDatabaseOperations.GetOperationsByService(serviceName)
-		}
-	case systemconfig.SystemOtelDemo:
-		if m.otelDatabaseOperations != nil {
-			return m.otelDatabaseOperations.GetOperationsByService(serviceName)
-		}
+	if accessor := m.databaseOperations[systemconfig.GetCurrentSystem()]; accessor != nil {
+		return accessor.GetOperationsByService(serviceName)
 	}
 	return nil
 }
 
-// GetAllDatabaseServices returns all database services based on current system
+// GetAllDatabaseServices returns all database services based on the current system.
 func (m *MetadataAccessor) GetAllDatabaseServices() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		if m.tsDatabaseOperations != nil {
-			return m.tsDatabaseOperations.GetAllDatabaseServices()
-		}
-	case systemconfig.SystemOtelDemo:
-		if m.otelDatabaseOperations != nil {
-			return m.otelDatabaseOperations.GetAllDatabaseServices()
-		}
+	if accessor := m.databaseOperations[systemconfig.GetCurrentSystem()]; accessor != nil {
+		return accessor.GetAllDatabaseServices()
 	}
 	return nil
 }
 
-// GetGRPCOperationsByService returns gRPC operations for a service (OtelDemo only)
+// GetGRPCOperationsByService returns gRPC operations for a service based on the current system.
 func (m *MetadataAccessor) GetGRPCOperationsByService(serviceName string) []GRPCOperation {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// gRPC operations are primarily for OtelDemo
-	if systemconfig.IsOtelDemo() && m.otelGRPCOperations != nil {
-		return m.otelGRPCOperations.GetOperationsByService(serviceName)
+	if accessor := m.grpcOperations[systemconfig.GetCurrentSystem()]; accessor != nil {
+		return accessor.GetOperationsByService(serviceName)
 	}
 	return nil
 }
 
-// GetAllGRPCServices returns all gRPC services (OtelDemo only)
+// GetAllGRPCServices returns all gRPC services based on the current system.
 func (m *MetadataAccessor) GetAllGRPCServices() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// gRPC operations are primarily for OtelDemo
-	if systemconfig.IsOtelDemo() && m.otelGRPCOperations != nil {
-		return m.otelGRPCOperations.GetAllGRPCServices()
+	if accessor := m.grpcOperations[systemconfig.GetCurrentSystem()]; accessor != nil {
+		return accessor.GetAllGRPCServices()
 	}
 	return nil
 }
 
-// GetJavaMethodsByService returns Java methods for a service (TrainTicket only)
+// GetJavaMethodsByService returns Java methods for a service based on the current system.
 func (m *MetadataAccessor) GetJavaMethodsByService(serviceName string) []JavaClassMethod {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Java methods are for TrainTicket (Java-based microservices)
-	if systemconfig.IsTrainTicket() && m.tsJavaMethods != nil {
-		return m.tsJavaMethods.GetClassMethodsByService(serviceName)
+	if accessor := m.javaMethods[systemconfig.GetCurrentSystem()]; accessor != nil {
+		return accessor.GetClassMethodsByService(serviceName)
 	}
 	return nil
 }
 
-// GetAllJavaServices returns all Java services (TrainTicket only)
+// GetAllJavaServices returns all Java services based on the current system.
 func (m *MetadataAccessor) GetAllJavaServices() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Java methods are for TrainTicket
-	if systemconfig.IsTrainTicket() && m.tsJavaMethods != nil {
-		return m.tsJavaMethods.GetAllServices()
+	if accessor := m.javaMethods[systemconfig.GetCurrentSystem()]; accessor != nil {
+		return accessor.GetAllServices()
 	}
 	return nil
 }
 
-// HasServiceEndpoints returns true if service endpoints are available for current system
+// HasServiceEndpoints returns true if service endpoints are available for the current system.
 func (m *MetadataAccessor) HasServiceEndpoints() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		return m.tsServiceEndpoints != nil
-	case systemconfig.SystemOtelDemo:
-		return m.otelServiceEndpoints != nil
-	}
-	return false
+	return m.serviceEndpoints[systemconfig.GetCurrentSystem()] != nil
 }
 
-// HasDatabaseOperations returns true if database operations are available for current system
+// HasDatabaseOperations returns true if database operations are available for the current system.
 func (m *MetadataAccessor) HasDatabaseOperations() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		return m.tsDatabaseOperations != nil
-	case systemconfig.SystemOtelDemo:
-		return m.otelDatabaseOperations != nil
-	}
-	return false
+	return m.databaseOperations[systemconfig.GetCurrentSystem()] != nil
 }
 
-// HasGRPCOperations returns true if gRPC operations are available for current system
+// HasGRPCOperations returns true if gRPC operations are available for the current system.
 func (m *MetadataAccessor) HasGRPCOperations() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return systemconfig.IsOtelDemo() && m.otelGRPCOperations != nil
+	return m.grpcOperations[systemconfig.GetCurrentSystem()] != nil
 }
 
-// HasJavaMethods returns true if Java methods are available for current system
+// HasJavaMethods returns true if Java methods are available for the current system.
 func (m *MetadataAccessor) HasJavaMethods() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return systemconfig.IsTrainTicket() && m.tsJavaMethods != nil
+	return m.javaMethods[systemconfig.GetCurrentSystem()] != nil
 }
 
-// Clear removes all registered accessors (useful for testing)
+// Clear removes all registered accessors. Useful for testing.
 func (m *MetadataAccessor) Clear() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.tsServiceEndpoints = nil
-	m.tsDatabaseOperations = nil
-	m.tsJavaMethods = nil
-	m.otelServiceEndpoints = nil
-	m.otelDatabaseOperations = nil
-	m.otelGRPCOperations = nil
+	m.serviceEndpoints = make(map[systemconfig.SystemType]ServiceEndpointAccessor)
+	m.databaseOperations = make(map[systemconfig.SystemType]DatabaseOperationAccessor)
+	m.grpcOperations = make(map[systemconfig.SystemType]GRPCOperationAccessor)
+	m.javaMethods = make(map[systemconfig.SystemType]JavaMethodAccessor)
 }

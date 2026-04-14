@@ -90,3 +90,11 @@ func Clear() {
 
 	systemRegistry = make(map[systemconfig.SystemType]*model.SystemData)
 }
+
+// Unregister removes system data for a given system type.
+func Unregister(systemType systemconfig.SystemType) {
+	registryMutex.Lock()
+	defer registryMutex.Unlock()
+
+	delete(systemRegistry, systemType)
+}

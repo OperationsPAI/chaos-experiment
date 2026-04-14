@@ -1,9 +1,11 @@
 // Package grpcoperations provides a system-aware routing layer for gRPC operation data.
-// This package delegates to the appropriate system-specific package based on the current system configuration.
-// Note: gRPC operations are primarily used in OtelDemo; TrainTicket uses HTTP.
+// This package delegates to registered providers instead of hard-coded switch statements.
 package grpcoperations
 
 import (
+	"sort"
+	"strings"
+
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
 
 	hsgrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/grpcoperations"
@@ -15,7 +17,7 @@ import (
 	teastoregrpc "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/grpcoperations"
 )
 
-// GRPCOperation represents a gRPC operation from ClickHouse analysis
+// GRPCOperation represents a gRPC operation from ClickHouse analysis.
 type GRPCOperation struct {
 	ServiceName   string
 	RPCSystem     string
@@ -27,155 +29,175 @@ type GRPCOperation struct {
 	SpanKind      string
 }
 
-// GetOperationsByService returns all gRPC operations for a service based on current system
-func GetOperationsByService(serviceName string) []GRPCOperation {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemOtelDemo:
-		otelOps := oteldemogrpc.GetOperationsByService(serviceName)
-		return convertOtelDemoOperations(otelOps)
-	case systemconfig.SystemMediaMicroservices:
-		mediaOps := mediagrpc.GetOperationsByService(serviceName)
-		return convertMediaOperations(mediaOps)
-	case systemconfig.SystemHotelReservation:
-		hsOps := hsgrpc.GetOperationsByService(serviceName)
-		return convertHSOperations(hsOps)
-	case systemconfig.SystemSocialNetwork:
-		snOps := sngrpc.GetOperationsByService(serviceName)
-		return convertSNOperations(snOps)
-	case systemconfig.SystemOnlineBoutique:
-		obOps := obgrpc.GetOperationsByService(serviceName)
-		return convertOBOperations(obOps)
-	case systemconfig.SystemSockShop:
-		sockshopOps := sockshopgrpc.GetOperationsByService(serviceName)
-		return convertSockShopOperations(sockshopOps)
-	case systemconfig.SystemTeaStore:
-		teastoreOps := teastoregrpc.GetOperationsByService(serviceName)
-		return convertTeaStoreOperations(teastoreOps)
-	default:
-		// TrainTicket doesn't have gRPC operations
-		return []GRPCOperation{}
-	}
+type staticGRPCOperationProvider struct {
+	operations map[string][]GRPCOperation
 }
 
-// GetAllGRPCServices returns a list of all services that perform gRPC operations based on current system
+func init() {
+	registry := systemconfig.GetRegistry()
+	registry.RegisterGRPCOperationProvider(systemconfig.SystemOtelDemo, newStaticGRPCOperationProvider(convertOtelDemoOperationMap(oteldemogrpc.GRPCOperations)))
+	registry.RegisterGRPCOperationProvider(systemconfig.SystemMediaMicroservices, newStaticGRPCOperationProvider(convertMediaOperationMap(mediagrpc.GRPCOperations)))
+	registry.RegisterGRPCOperationProvider(systemconfig.SystemHotelReservation, newStaticGRPCOperationProvider(convertHSOperationMap(hsgrpc.GRPCOperations)))
+	registry.RegisterGRPCOperationProvider(systemconfig.SystemSocialNetwork, newStaticGRPCOperationProvider(convertSNOperationMap(sngrpc.GRPCOperations)))
+	registry.RegisterGRPCOperationProvider(systemconfig.SystemOnlineBoutique, newStaticGRPCOperationProvider(convertOBOperationMap(obgrpc.GRPCOperations)))
+	registry.RegisterGRPCOperationProvider(systemconfig.SystemSockShop, newStaticGRPCOperationProvider(convertSockShopOperationMap(sockshopgrpc.GRPCOperations)))
+	registry.RegisterGRPCOperationProvider(systemconfig.SystemTeaStore, newStaticGRPCOperationProvider(convertTeaStoreOperationMap(teastoregrpc.GRPCOperations)))
+}
+
+func newStaticGRPCOperationProvider(operations map[string][]GRPCOperation) systemconfig.GRPCOperationProvider {
+	return &staticGRPCOperationProvider{operations: operations}
+}
+
+func (p *staticGRPCOperationProvider) GetServiceNames() []string {
+	services := make([]string, 0, len(p.operations))
+	for service := range p.operations {
+		services = append(services, service)
+	}
+	sort.Strings(services)
+	return services
+}
+
+func (p *staticGRPCOperationProvider) GetOperationsByService(serviceName string) []systemconfig.GRPCOperationData {
+	operations := p.operations[serviceName]
+	result := make([]systemconfig.GRPCOperationData, len(operations))
+	for i, operation := range operations {
+		result[i] = systemconfig.GRPCOperationData{
+			ServiceName:    operation.ServiceName,
+			RPCSystem:      operation.RPCSystem,
+			RPCService:     operation.RPCService,
+			RPCMethod:      operation.RPCMethod,
+			GRPCStatusCode: operation.StatusCode,
+			ServerAddress:  operation.ServerAddress,
+			ServerPort:     operation.ServerPort,
+			SpanKind:       operation.SpanKind,
+		}
+	}
+	return result
+}
+
+// GetOperationsByService returns all gRPC operations for a service based on the current system.
+func GetOperationsByService(serviceName string) []GRPCOperation {
+	provider, err := systemconfig.GetRegistry().GetGRPCOperationProvider()
+	if err != nil {
+		return []GRPCOperation{}
+	}
+
+	data := provider.GetOperationsByService(serviceName)
+	result := make([]GRPCOperation, len(data))
+	for i, operation := range data {
+		result[i] = GRPCOperation{
+			ServiceName:   operation.ServiceName,
+			RPCSystem:     operation.RPCSystem,
+			RPCService:    operation.RPCService,
+			RPCMethod:     operation.RPCMethod,
+			StatusCode:    operation.GRPCStatusCode,
+			ServerAddress: operation.ServerAddress,
+			ServerPort:    operation.ServerPort,
+			SpanKind:      operation.SpanKind,
+		}
+	}
+	return result
+}
+
+// GetAllGRPCServices returns a list of all services that perform gRPC operations.
 func GetAllGRPCServices() []string {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemOtelDemo:
-		return oteldemogrpc.GetAllGRPCServices()
-	case systemconfig.SystemMediaMicroservices:
-		return mediagrpc.GetAllGRPCServices()
-	case systemconfig.SystemHotelReservation:
-		return hsgrpc.GetAllGRPCServices()
-	case systemconfig.SystemSocialNetwork:
-		return sngrpc.GetAllGRPCServices()
-	case systemconfig.SystemOnlineBoutique:
-		return obgrpc.GetAllGRPCServices()
-	case systemconfig.SystemSockShop:
-		return sockshopgrpc.GetAllGRPCServices()
-	case systemconfig.SystemTeaStore:
-		return teastoregrpc.GetAllGRPCServices()
-	default:
-		// TrainTicket doesn't have gRPC operations
+	provider, err := systemconfig.GetRegistry().GetGRPCOperationProvider()
+	if err != nil {
 		return []string{}
 	}
+	return provider.GetServiceNames()
 }
 
-// GetClientOperations returns all client-side gRPC operations based on current system
+// GetClientOperations returns all client-side gRPC operations.
 func GetClientOperations() []GRPCOperation {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemOtelDemo:
-		otelOps := oteldemogrpc.GetClientOperations()
-		return convertOtelDemoOperations(otelOps)
-	case systemconfig.SystemMediaMicroservices:
-		mediaOps := mediagrpc.GetClientOperations()
-		return convertMediaOperations(mediaOps)
-	case systemconfig.SystemHotelReservation:
-		hsOps := hsgrpc.GetClientOperations()
-		return convertHSOperations(hsOps)
-	case systemconfig.SystemSocialNetwork:
-		snOps := sngrpc.GetClientOperations()
-		return convertSNOperations(snOps)
-	case systemconfig.SystemOnlineBoutique:
-		obOps := obgrpc.GetClientOperations()
-		return convertOBOperations(obOps)
-	case systemconfig.SystemSockShop:
-		sockshopOps := sockshopgrpc.GetClientOperations()
-		return convertSockShopOperations(sockshopOps)
-	case systemconfig.SystemTeaStore:
-		teastoreOps := teastoregrpc.GetClientOperations()
-		return convertTeaStoreOperations(teastoreOps)
-	default:
-		// TrainTicket doesn't have gRPC operations
-		return []GRPCOperation{}
-	}
+	return filterOperations(func(operation GRPCOperation) bool {
+		return strings.EqualFold(operation.SpanKind, "client")
+	})
 }
 
-// GetServerOperations returns all server-side gRPC operations based on current system
+// GetServerOperations returns all server-side gRPC operations.
 func GetServerOperations() []GRPCOperation {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemOtelDemo:
-		otelOps := oteldemogrpc.GetServerOperations()
-		return convertOtelDemoOperations(otelOps)
-	case systemconfig.SystemMediaMicroservices:
-		mediaOps := mediagrpc.GetServerOperations()
-		return convertMediaOperations(mediaOps)
-	case systemconfig.SystemHotelReservation:
-		hsOps := hsgrpc.GetServerOperations()
-		return convertHSOperations(hsOps)
-	case systemconfig.SystemSocialNetwork:
-		snOps := sngrpc.GetServerOperations()
-		return convertSNOperations(snOps)
-	case systemconfig.SystemOnlineBoutique:
-		obOps := obgrpc.GetServerOperations()
-		return convertOBOperations(obOps)
-	case systemconfig.SystemSockShop:
-		sockshopOps := sockshopgrpc.GetServerOperations()
-		return convertSockShopOperations(sockshopOps)
-	case systemconfig.SystemTeaStore:
-		teastoreOps := teastoregrpc.GetServerOperations()
-		return convertTeaStoreOperations(teastoreOps)
-	default:
-		// TrainTicket doesn't have gRPC operations
-		return []GRPCOperation{}
-	}
+	return filterOperations(func(operation GRPCOperation) bool {
+		return strings.EqualFold(operation.SpanKind, "server")
+	})
 }
 
-// GetOperationsByRPCService returns all operations for a specific RPC service based on current system
+// GetOperationsByRPCService returns all operations for a specific RPC service.
 func GetOperationsByRPCService(rpcService string) []GRPCOperation {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemOtelDemo:
-		otelOps := oteldemogrpc.GetOperationsByRPCService(rpcService)
-		return convertOtelDemoOperations(otelOps)
-	case systemconfig.SystemMediaMicroservices:
-		mediaOps := mediagrpc.GetOperationsByRPCService(rpcService)
-		return convertMediaOperations(mediaOps)
-	case systemconfig.SystemHotelReservation:
-		hsOps := hsgrpc.GetOperationsByRPCService(rpcService)
-		return convertHSOperations(hsOps)
-	case systemconfig.SystemSocialNetwork:
-		snOps := sngrpc.GetOperationsByRPCService(rpcService)
-		return convertSNOperations(snOps)
-	case systemconfig.SystemOnlineBoutique:
-		obOps := obgrpc.GetOperationsByRPCService(rpcService)
-		return convertOBOperations(obOps)
-	case systemconfig.SystemSockShop:
-		sockshopOps := sockshopgrpc.GetOperationsByRPCService(rpcService)
-		return convertSockShopOperations(sockshopOps)
-	case systemconfig.SystemTeaStore:
-		teastoreOps := teastoregrpc.GetOperationsByRPCService(rpcService)
-		return convertTeaStoreOperations(teastoreOps)
-	default:
-		// TrainTicket doesn't have gRPC operations
-		return []GRPCOperation{}
-	}
+	return filterOperations(func(operation GRPCOperation) bool {
+		return operation.RPCService == rpcService
+	})
 }
 
-// convertOtelDemoOperations converts otel-demo-specific operations to the common type
+func filterOperations(match func(GRPCOperation) bool) []GRPCOperation {
+	var results []GRPCOperation
+	for _, service := range GetAllGRPCServices() {
+		for _, operation := range GetOperationsByService(service) {
+			if match(operation) {
+				results = append(results, operation)
+			}
+		}
+	}
+	return results
+}
+
+func convertOtelDemoOperationMap(otelOps map[string][]oteldemogrpc.GRPCOperation) map[string][]GRPCOperation {
+	result := make(map[string][]GRPCOperation, len(otelOps))
+	for service, operations := range otelOps {
+		result[service] = convertOtelDemoOperations(operations)
+	}
+	return result
+}
+
+func convertMediaOperationMap(mediaOps map[string][]mediagrpc.GRPCOperation) map[string][]GRPCOperation {
+	result := make(map[string][]GRPCOperation, len(mediaOps))
+	for service, operations := range mediaOps {
+		result[service] = convertMediaOperations(operations)
+	}
+	return result
+}
+
+func convertHSOperationMap(hsOps map[string][]hsgrpc.GRPCOperation) map[string][]GRPCOperation {
+	result := make(map[string][]GRPCOperation, len(hsOps))
+	for service, operations := range hsOps {
+		result[service] = convertHSOperations(operations)
+	}
+	return result
+}
+
+func convertSNOperationMap(snOps map[string][]sngrpc.GRPCOperation) map[string][]GRPCOperation {
+	result := make(map[string][]GRPCOperation, len(snOps))
+	for service, operations := range snOps {
+		result[service] = convertSNOperations(operations)
+	}
+	return result
+}
+
+func convertOBOperationMap(obOps map[string][]obgrpc.GRPCOperation) map[string][]GRPCOperation {
+	result := make(map[string][]GRPCOperation, len(obOps))
+	for service, operations := range obOps {
+		result[service] = convertOBOperations(operations)
+	}
+	return result
+}
+
+func convertSockShopOperationMap(sockshopOps map[string][]sockshopgrpc.GRPCOperation) map[string][]GRPCOperation {
+	result := make(map[string][]GRPCOperation, len(sockshopOps))
+	for service, operations := range sockshopOps {
+		result[service] = convertSockShopOperations(operations)
+	}
+	return result
+}
+
+func convertTeaStoreOperationMap(teastoreOps map[string][]teastoregrpc.GRPCOperation) map[string][]GRPCOperation {
+	result := make(map[string][]GRPCOperation, len(teastoreOps))
+	for service, operations := range teastoreOps {
+		result[service] = convertTeaStoreOperations(operations)
+	}
+	return result
+}
+
+// convertOtelDemoOperations converts otel-demo-specific operations to the common type.
 func convertOtelDemoOperations(otelOps []oteldemogrpc.GRPCOperation) []GRPCOperation {
 	result := make([]GRPCOperation, len(otelOps))
 	for i, op := range otelOps {
@@ -193,7 +215,7 @@ func convertOtelDemoOperations(otelOps []oteldemogrpc.GRPCOperation) []GRPCOpera
 	return result
 }
 
-// convertMediaOperations converts media-specific operations to the common type
+// convertMediaOperations converts media-specific operations to the common type.
 func convertMediaOperations(mediaOps []mediagrpc.GRPCOperation) []GRPCOperation {
 	result := make([]GRPCOperation, len(mediaOps))
 	for i, op := range mediaOps {
@@ -211,7 +233,7 @@ func convertMediaOperations(mediaOps []mediagrpc.GRPCOperation) []GRPCOperation 
 	return result
 }
 
-// convertHSOperations converts hs-specific operations to the common type
+// convertHSOperations converts hs-specific operations to the common type.
 func convertHSOperations(hsOps []hsgrpc.GRPCOperation) []GRPCOperation {
 	result := make([]GRPCOperation, len(hsOps))
 	for i, op := range hsOps {
@@ -229,7 +251,7 @@ func convertHSOperations(hsOps []hsgrpc.GRPCOperation) []GRPCOperation {
 	return result
 }
 
-// convertSNOperations converts sn-specific operations to the common type
+// convertSNOperations converts sn-specific operations to the common type.
 func convertSNOperations(snOps []sngrpc.GRPCOperation) []GRPCOperation {
 	result := make([]GRPCOperation, len(snOps))
 	for i, op := range snOps {
@@ -247,7 +269,7 @@ func convertSNOperations(snOps []sngrpc.GRPCOperation) []GRPCOperation {
 	return result
 }
 
-// convertOBOperations converts ob-specific operations to the common type
+// convertOBOperations converts ob-specific operations to the common type.
 func convertOBOperations(obOps []obgrpc.GRPCOperation) []GRPCOperation {
 	result := make([]GRPCOperation, len(obOps))
 	for i, op := range obOps {
@@ -265,7 +287,7 @@ func convertOBOperations(obOps []obgrpc.GRPCOperation) []GRPCOperation {
 	return result
 }
 
-// convertSockShopOperations converts sockshop-specific operations to the common type
+// convertSockShopOperations converts sockshop-specific operations to the common type.
 func convertSockShopOperations(sockshopOps []sockshopgrpc.GRPCOperation) []GRPCOperation {
 	result := make([]GRPCOperation, len(sockshopOps))
 	for i, op := range sockshopOps {
@@ -283,7 +305,7 @@ func convertSockShopOperations(sockshopOps []sockshopgrpc.GRPCOperation) []GRPCO
 	return result
 }
 
-// convertTeaStoreOperations converts teastore-specific operations to the common type
+// convertTeaStoreOperations converts teastore-specific operations to the common type.
 func convertTeaStoreOperations(teastoreOps []teastoregrpc.GRPCOperation) []GRPCOperation {
 	result := make([]GRPCOperation, len(teastoreOps))
 	for i, op := range teastoreOps {
@@ -301,19 +323,15 @@ func convertTeaStoreOperations(teastoreOps []teastoregrpc.GRPCOperation) []GRPCO
 	return result
 }
 
-// IsGRPCRoutePattern checks if a route looks like a gRPC route pattern
-// gRPC routes typically follow the format: /package.Service/Method
-// Examples: /oteldemo.CartService/AddItem, /flagd.evaluation.v1.Service/EventStream
+// IsGRPCRoutePattern checks if a route looks like a gRPC route pattern.
 func IsGRPCRoutePattern(route string) bool {
 	if route == "" || len(route) < 3 {
 		return false
 	}
-	// gRPC routes start with / and contain package.Service/Method pattern
 	if route[0] != '/' {
 		return false
 	}
-	// Look for patterns like /oteldemo.CartService/AddItem
-	// These have a dot in the first segment (before second slash)
+
 	hasDot := false
 	for i := 1; i < len(route); i++ {
 		if route[i] == '/' {

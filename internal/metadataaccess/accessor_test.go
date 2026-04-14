@@ -336,3 +336,88 @@ func TestMetadataAccessorClear(t *testing.T) {
 		t.Error("Should not have service endpoints after clear")
 	}
 }
+
+func TestMetadataAccessorDynamicRegistration(t *testing.T) {
+	const testSystem = systemconfig.SystemType("metadata-dynamic-system")
+
+	t.Cleanup(func() {
+		_ = systemconfig.SetCurrentSystem(systemconfig.SystemTrainTicket)
+		_ = systemconfig.UnregisterSystem(testSystem)
+	})
+
+	if err := systemconfig.RegisterSystem(systemconfig.SystemRegistration{
+		Name:        testSystem,
+		NsPattern:   "^metadata-dynamic-system\\d+$",
+		DisplayName: "MetadataDynamicSystem",
+	}); err != nil {
+		t.Fatalf("RegisterSystem() error = %v", err)
+	}
+
+	accessor := GetAccessor()
+	accessor.Clear()
+
+	serviceAccessor := &MockServiceEndpointAccessor{
+		services: []string{"dynamic-api"},
+		endpoints: map[string][]ServiceEndpoint{
+			"dynamic-api": {
+				{ServiceName: "dynamic-api", Route: "/api/dynamic"},
+			},
+		},
+	}
+
+	dbAccessor := &MockDatabaseOperationAccessor{
+		services: []string{"dynamic-api"},
+		operations: map[string][]DatabaseOperation{
+			"dynamic-api": {
+				{ServiceName: "dynamic-api", DBName: "dynamic", DBTable: "records", Operation: "SELECT"},
+			},
+		},
+	}
+
+	grpcAccessor := &MockGRPCOperationAccessor{
+		services: []string{"dynamic-api"},
+		operations: map[string][]GRPCOperation{
+			"dynamic-api": {
+				{ServiceName: "dynamic-api", RPCService: "dynamic.API", RPCMethod: "List"},
+			},
+		},
+	}
+
+	javaAccessor := &MockJavaMethodAccessor{
+		services: []string{"dynamic-api"},
+		methods: map[string][]JavaClassMethod{
+			"dynamic-api": {
+				{ClassName: "dynamic.ApiService", MethodName: "List"},
+			},
+		},
+	}
+
+	accessor.RegisterServiceEndpoints(testSystem, serviceAccessor)
+	accessor.RegisterDatabaseOperations(testSystem, dbAccessor)
+	accessor.RegisterGRPCOperations(testSystem, grpcAccessor)
+	accessor.RegisterJavaMethods(testSystem, javaAccessor)
+
+	if err := systemconfig.SetCurrentSystem(testSystem); err != nil {
+		t.Fatalf("SetCurrentSystem() error = %v", err)
+	}
+
+	if !accessor.HasServiceEndpoints() || !accessor.HasDatabaseOperations() || !accessor.HasGRPCOperations() || !accessor.HasJavaMethods() {
+		t.Fatal("dynamic system should expose all registered accessors")
+	}
+
+	if endpoints := accessor.GetEndpointsByService("dynamic-api"); len(endpoints) != 1 || endpoints[0].Route != "/api/dynamic" {
+		t.Fatalf("unexpected endpoints: %#v", endpoints)
+	}
+
+	if ops := accessor.GetDatabaseOperationsByService("dynamic-api"); len(ops) != 1 || ops[0].DBTable != "records" {
+		t.Fatalf("unexpected database ops: %#v", ops)
+	}
+
+	if ops := accessor.GetGRPCOperationsByService("dynamic-api"); len(ops) != 1 || ops[0].RPCMethod != "List" {
+		t.Fatalf("unexpected gRPC ops: %#v", ops)
+	}
+
+	if methods := accessor.GetJavaMethodsByService("dynamic-api"); len(methods) != 1 || methods[0].MethodName != "List" {
+		t.Fatalf("unexpected Java methods: %#v", methods)
+	}
+}

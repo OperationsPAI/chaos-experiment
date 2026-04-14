@@ -103,6 +103,14 @@ func GetSystemCache(system systemconfig.SystemType) *systemCache {
 	return getCacheManager().getSystemCache(system)
 }
 
+// ResetSystemCache clears and removes cached lookup data for a system.
+func ResetSystemCache(system systemconfig.SystemType) {
+	cm := getCacheManager()
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+	delete(cm.caches, system)
+}
+
 // newSystemCache creates a new systemCache instance
 func newSystemCache(system systemconfig.SystemType) *systemCache {
 	return &systemCache{

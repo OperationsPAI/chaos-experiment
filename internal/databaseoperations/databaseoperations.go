@@ -1,8 +1,10 @@
 // Package databaseoperations provides a system-aware routing layer for database operation data.
-// This package delegates to the appropriate system-specific package based on the current system configuration.
+// This package delegates to registered providers instead of hard-coded switch statements.
 package databaseoperations
 
 import (
+	"sort"
+
 	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
 
 	hsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/databaseoperations"
@@ -15,7 +17,7 @@ import (
 	tsdb "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/databaseoperations"
 )
 
-// DatabaseOperation represents a database operation from ClickHouse analysis
+// DatabaseOperation represents a database operation from ClickHouse analysis.
 type DatabaseOperation struct {
 	ServiceName   string
 	DBName        string
@@ -26,133 +28,175 @@ type DatabaseOperation struct {
 	ServerPort    string
 }
 
-// GetOperationsByService returns all database operations for a service based on current system
-func GetOperationsByService(serviceName string) []DatabaseOperation {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		tsOps := tsdb.GetOperationsByService(serviceName)
-		return convertTSOperations(tsOps)
-	case systemconfig.SystemOtelDemo:
-		otelOps := oteldemodb.GetOperationsByService(serviceName)
-		return convertOtelDemoOperations(otelOps)
-	case systemconfig.SystemMediaMicroservices:
-		mediaOps := mediadb.GetOperationsByService(serviceName)
-		return convertMediaOperations(mediaOps)
-	case systemconfig.SystemHotelReservation:
-		hsOps := hsdb.GetOperationsByService(serviceName)
-		return convertHSOperations(hsOps)
-	case systemconfig.SystemSocialNetwork:
-		snOps := sndb.GetOperationsByService(serviceName)
-		return convertSNOperations(snOps)
-	case systemconfig.SystemOnlineBoutique:
-		obOps := obdb.GetOperationsByService(serviceName)
-		return convertOBOperations(obOps)
-	case systemconfig.SystemSockShop:
-		sockshopOps := sockshopdb.GetOperationsByService(serviceName)
-		return convertSockShopOperations(sockshopOps)
-	case systemconfig.SystemTeaStore:
-		teastoreOps := teastoredb.GetOperationsByService(serviceName)
-		return convertTeaStoreOperations(teastoreOps)
-	default:
-		// Default to TrainTicket
-		tsOps := tsdb.GetOperationsByService(serviceName)
-		return convertTSOperations(tsOps)
-	}
+type staticDatabaseOperationProvider struct {
+	operations map[string][]DatabaseOperation
 }
 
-// GetAllDatabaseServices returns a list of all services that perform database operations based on current system
+func init() {
+	registry := systemconfig.GetRegistry()
+	registry.RegisterDatabaseOperationProvider(systemconfig.SystemTrainTicket, newStaticDatabaseOperationProvider(convertTSOperationMap(tsdb.DatabaseOperations)))
+	registry.RegisterDatabaseOperationProvider(systemconfig.SystemOtelDemo, newStaticDatabaseOperationProvider(convertOtelDemoOperationMap(oteldemodb.DatabaseOperations)))
+	registry.RegisterDatabaseOperationProvider(systemconfig.SystemMediaMicroservices, newStaticDatabaseOperationProvider(convertMediaOperationMap(mediadb.DatabaseOperations)))
+	registry.RegisterDatabaseOperationProvider(systemconfig.SystemHotelReservation, newStaticDatabaseOperationProvider(convertHSOperationMap(hsdb.DatabaseOperations)))
+	registry.RegisterDatabaseOperationProvider(systemconfig.SystemSocialNetwork, newStaticDatabaseOperationProvider(convertSNOperationMap(sndb.DatabaseOperations)))
+	registry.RegisterDatabaseOperationProvider(systemconfig.SystemOnlineBoutique, newStaticDatabaseOperationProvider(convertOBOperationMap(obdb.DatabaseOperations)))
+	registry.RegisterDatabaseOperationProvider(systemconfig.SystemSockShop, newStaticDatabaseOperationProvider(convertSockShopOperationMap(sockshopdb.DatabaseOperations)))
+	registry.RegisterDatabaseOperationProvider(systemconfig.SystemTeaStore, newStaticDatabaseOperationProvider(convertTeaStoreOperationMap(teastoredb.DatabaseOperations)))
+}
+
+func newStaticDatabaseOperationProvider(operations map[string][]DatabaseOperation) systemconfig.DatabaseOperationProvider {
+	return &staticDatabaseOperationProvider{operations: operations}
+}
+
+func (p *staticDatabaseOperationProvider) GetServiceNames() []string {
+	services := make([]string, 0, len(p.operations))
+	for service := range p.operations {
+		services = append(services, service)
+	}
+	sort.Strings(services)
+	return services
+}
+
+func (p *staticDatabaseOperationProvider) GetOperationsByService(serviceName string) []systemconfig.DatabaseOperationData {
+	operations := p.operations[serviceName]
+	result := make([]systemconfig.DatabaseOperationData, len(operations))
+	for i, operation := range operations {
+		result[i] = systemconfig.DatabaseOperationData{
+			ServiceName:   operation.ServiceName,
+			DBName:        operation.DBName,
+			DBTable:       operation.DBTable,
+			Operation:     operation.Operation,
+			DBSystem:      operation.DBSystem,
+			ServerAddress: operation.ServerAddress,
+			ServerPort:    operation.ServerPort,
+		}
+	}
+	return result
+}
+
+// GetOperationsByService returns all database operations for a service based on the current system.
+func GetOperationsByService(serviceName string) []DatabaseOperation {
+	provider, err := systemconfig.GetRegistry().GetDatabaseOperationProvider()
+	if err != nil {
+		return []DatabaseOperation{}
+	}
+
+	data := provider.GetOperationsByService(serviceName)
+	result := make([]DatabaseOperation, len(data))
+	for i, operation := range data {
+		result[i] = DatabaseOperation{
+			ServiceName:   operation.ServiceName,
+			DBName:        operation.DBName,
+			DBTable:       operation.DBTable,
+			Operation:     operation.Operation,
+			DBSystem:      operation.DBSystem,
+			ServerAddress: operation.ServerAddress,
+			ServerPort:    operation.ServerPort,
+		}
+	}
+	return result
+}
+
+// GetAllDatabaseServices returns a list of all services that perform database operations.
 func GetAllDatabaseServices() []string {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		return tsdb.GetAllDatabaseServices()
-	case systemconfig.SystemOtelDemo:
-		return oteldemodb.GetAllDatabaseServices()
-	case systemconfig.SystemMediaMicroservices:
-		return mediadb.GetAllDatabaseServices()
-	case systemconfig.SystemHotelReservation:
-		return hsdb.GetAllDatabaseServices()
-	case systemconfig.SystemSocialNetwork:
-		return sndb.GetAllDatabaseServices()
-	case systemconfig.SystemOnlineBoutique:
-		return obdb.GetAllDatabaseServices()
-	case systemconfig.SystemSockShop:
-		return sockshopdb.GetAllDatabaseServices()
-	case systemconfig.SystemTeaStore:
-		return teastoredb.GetAllDatabaseServices()
-	default:
+	provider, err := systemconfig.GetRegistry().GetDatabaseOperationProvider()
+	if err != nil {
 		return []string{}
 	}
+	return provider.GetServiceNames()
 }
 
-// GetOperationsByDatabase returns all operations for a specific database based on current system
+// GetOperationsByDatabase returns all operations for a specific database.
 func GetOperationsByDatabase(dbName string) []DatabaseOperation {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		tsOps := tsdb.GetOperationsByDatabase(dbName)
-		return convertTSOperations(tsOps)
-	case systemconfig.SystemOtelDemo:
-		otelOps := oteldemodb.GetOperationsByDatabase(dbName)
-		return convertOtelDemoOperations(otelOps)
-	case systemconfig.SystemMediaMicroservices:
-		mediaOps := mediadb.GetOperationsByDatabase(dbName)
-		return convertMediaOperations(mediaOps)
-	case systemconfig.SystemHotelReservation:
-		hsOps := hsdb.GetOperationsByDatabase(dbName)
-		return convertHSOperations(hsOps)
-	case systemconfig.SystemSocialNetwork:
-		snOps := sndb.GetOperationsByDatabase(dbName)
-		return convertSNOperations(snOps)
-	case systemconfig.SystemOnlineBoutique:
-		obOps := obdb.GetOperationsByDatabase(dbName)
-		return convertOBOperations(obOps)
-	case systemconfig.SystemSockShop:
-		sockshopOps := sockshopdb.GetOperationsByDatabase(dbName)
-		return convertSockShopOperations(sockshopOps)
-	case systemconfig.SystemTeaStore:
-		teastoreOps := teastoredb.GetOperationsByDatabase(dbName)
-		return convertTeaStoreOperations(teastoreOps)
-	default:
-		return []DatabaseOperation{}
+	var results []DatabaseOperation
+	for _, service := range GetAllDatabaseServices() {
+		for _, operation := range GetOperationsByService(service) {
+			if operation.DBName == dbName {
+				results = append(results, operation)
+			}
+		}
 	}
+	return results
 }
 
-// GetOperationsByTable returns all operations for a specific table based on current system
+// GetOperationsByTable returns all operations for a specific table.
 func GetOperationsByTable(dbTable string) []DatabaseOperation {
-	system := systemconfig.GetCurrentSystem()
-	switch system {
-	case systemconfig.SystemTrainTicket:
-		tsOps := tsdb.GetOperationsByTable(dbTable)
-		return convertTSOperations(tsOps)
-	case systemconfig.SystemOtelDemo:
-		otelOps := oteldemodb.GetOperationsByTable(dbTable)
-		return convertOtelDemoOperations(otelOps)
-	case systemconfig.SystemMediaMicroservices:
-		mediaOps := mediadb.GetOperationsByTable(dbTable)
-		return convertMediaOperations(mediaOps)
-	case systemconfig.SystemHotelReservation:
-		hsOps := hsdb.GetOperationsByTable(dbTable)
-		return convertHSOperations(hsOps)
-	case systemconfig.SystemSocialNetwork:
-		snOps := sndb.GetOperationsByTable(dbTable)
-		return convertSNOperations(snOps)
-	case systemconfig.SystemOnlineBoutique:
-		obOps := obdb.GetOperationsByTable(dbTable)
-		return convertOBOperations(obOps)
-	case systemconfig.SystemSockShop:
-		sockshopOps := sockshopdb.GetOperationsByTable(dbTable)
-		return convertSockShopOperations(sockshopOps)
-	case systemconfig.SystemTeaStore:
-		teastoreOps := teastoredb.GetOperationsByTable(dbTable)
-		return convertTeaStoreOperations(teastoreOps)
-	default:
-		return []DatabaseOperation{}
+	var results []DatabaseOperation
+	for _, service := range GetAllDatabaseServices() {
+		for _, operation := range GetOperationsByService(service) {
+			if operation.DBTable == dbTable {
+				results = append(results, operation)
+			}
+		}
 	}
+	return results
 }
 
-// convertTSOperations converts ts-specific operations to the common type
+func convertTSOperationMap(tsOps map[string][]tsdb.DatabaseOperation) map[string][]DatabaseOperation {
+	result := make(map[string][]DatabaseOperation, len(tsOps))
+	for service, operations := range tsOps {
+		result[service] = convertTSOperations(operations)
+	}
+	return result
+}
+
+func convertOtelDemoOperationMap(otelOps map[string][]oteldemodb.DatabaseOperation) map[string][]DatabaseOperation {
+	result := make(map[string][]DatabaseOperation, len(otelOps))
+	for service, operations := range otelOps {
+		result[service] = convertOtelDemoOperations(operations)
+	}
+	return result
+}
+
+func convertMediaOperationMap(mediaOps map[string][]mediadb.DatabaseOperation) map[string][]DatabaseOperation {
+	result := make(map[string][]DatabaseOperation, len(mediaOps))
+	for service, operations := range mediaOps {
+		result[service] = convertMediaOperations(operations)
+	}
+	return result
+}
+
+func convertHSOperationMap(hsOps map[string][]hsdb.DatabaseOperation) map[string][]DatabaseOperation {
+	result := make(map[string][]DatabaseOperation, len(hsOps))
+	for service, operations := range hsOps {
+		result[service] = convertHSOperations(operations)
+	}
+	return result
+}
+
+func convertSNOperationMap(snOps map[string][]sndb.DatabaseOperation) map[string][]DatabaseOperation {
+	result := make(map[string][]DatabaseOperation, len(snOps))
+	for service, operations := range snOps {
+		result[service] = convertSNOperations(operations)
+	}
+	return result
+}
+
+func convertOBOperationMap(obOps map[string][]obdb.DatabaseOperation) map[string][]DatabaseOperation {
+	result := make(map[string][]DatabaseOperation, len(obOps))
+	for service, operations := range obOps {
+		result[service] = convertOBOperations(operations)
+	}
+	return result
+}
+
+func convertSockShopOperationMap(sockshopOps map[string][]sockshopdb.DatabaseOperation) map[string][]DatabaseOperation {
+	result := make(map[string][]DatabaseOperation, len(sockshopOps))
+	for service, operations := range sockshopOps {
+		result[service] = convertSockShopOperations(operations)
+	}
+	return result
+}
+
+func convertTeaStoreOperationMap(teastoreOps map[string][]teastoredb.DatabaseOperation) map[string][]DatabaseOperation {
+	result := make(map[string][]DatabaseOperation, len(teastoreOps))
+	for service, operations := range teastoreOps {
+		result[service] = convertTeaStoreOperations(operations)
+	}
+	return result
+}
+
+// convertTSOperations converts ts-specific operations to the common type.
 func convertTSOperations(tsOps []tsdb.DatabaseOperation) []DatabaseOperation {
 	result := make([]DatabaseOperation, len(tsOps))
 	for i, op := range tsOps {
@@ -169,7 +213,7 @@ func convertTSOperations(tsOps []tsdb.DatabaseOperation) []DatabaseOperation {
 	return result
 }
 
-// convertOtelDemoOperations converts otel-demo-specific operations to the common type
+// convertOtelDemoOperations converts otel-demo-specific operations to the common type.
 func convertOtelDemoOperations(otelOps []oteldemodb.DatabaseOperation) []DatabaseOperation {
 	result := make([]DatabaseOperation, len(otelOps))
 	for i, op := range otelOps {
@@ -186,7 +230,7 @@ func convertOtelDemoOperations(otelOps []oteldemodb.DatabaseOperation) []Databas
 	return result
 }
 
-// convertMediaOperations converts media-specific operations to the common type
+// convertMediaOperations converts media-specific operations to the common type.
 func convertMediaOperations(mediaOps []mediadb.DatabaseOperation) []DatabaseOperation {
 	result := make([]DatabaseOperation, len(mediaOps))
 	for i, op := range mediaOps {
@@ -203,7 +247,7 @@ func convertMediaOperations(mediaOps []mediadb.DatabaseOperation) []DatabaseOper
 	return result
 }
 
-// convertHSOperations converts hs-specific operations to the common type
+// convertHSOperations converts hs-specific operations to the common type.
 func convertHSOperations(hsOps []hsdb.DatabaseOperation) []DatabaseOperation {
 	result := make([]DatabaseOperation, len(hsOps))
 	for i, op := range hsOps {
@@ -220,7 +264,7 @@ func convertHSOperations(hsOps []hsdb.DatabaseOperation) []DatabaseOperation {
 	return result
 }
 
-// convertSNOperations converts sn-specific operations to the common type
+// convertSNOperations converts sn-specific operations to the common type.
 func convertSNOperations(snOps []sndb.DatabaseOperation) []DatabaseOperation {
 	result := make([]DatabaseOperation, len(snOps))
 	for i, op := range snOps {
@@ -237,7 +281,7 @@ func convertSNOperations(snOps []sndb.DatabaseOperation) []DatabaseOperation {
 	return result
 }
 
-// convertOBOperations converts ob-specific operations to the common type
+// convertOBOperations converts ob-specific operations to the common type.
 func convertOBOperations(obOps []obdb.DatabaseOperation) []DatabaseOperation {
 	result := make([]DatabaseOperation, len(obOps))
 	for i, op := range obOps {
@@ -254,7 +298,7 @@ func convertOBOperations(obOps []obdb.DatabaseOperation) []DatabaseOperation {
 	return result
 }
 
-// convertSockShopOperations converts sockshop-specific operations to the common type
+// convertSockShopOperations converts sockshop-specific operations to the common type.
 func convertSockShopOperations(sockshopOps []sockshopdb.DatabaseOperation) []DatabaseOperation {
 	result := make([]DatabaseOperation, len(sockshopOps))
 	for i, op := range sockshopOps {
@@ -271,7 +315,7 @@ func convertSockShopOperations(sockshopOps []sockshopdb.DatabaseOperation) []Dat
 	return result
 }
 
-// convertTeaStoreOperations converts teastore-specific operations to the common type
+// convertTeaStoreOperations converts teastore-specific operations to the common type.
 func convertTeaStoreOperations(teastoreOps []teastoredb.DatabaseOperation) []DatabaseOperation {
 	result := make([]DatabaseOperation, len(teastoreOps))
 	for i, op := range teastoreOps {
