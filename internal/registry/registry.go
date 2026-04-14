@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/model"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/model"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 var (

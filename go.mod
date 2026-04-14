@@ -1,4 +1,4 @@
-module github.com/LGU-SE-Internal/chaos-experiment
+module github.com/OperationsPAI/chaos-experiment
 
 go 1.24.4
 

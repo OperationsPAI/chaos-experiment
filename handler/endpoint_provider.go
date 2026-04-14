@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func getAllAppLabels(ctx context.Context, system systemconfig.SystemType, namespace string) ([]string, error) {

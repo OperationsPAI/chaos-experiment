@@ -4,7 +4,7 @@
 package model
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
 )
 
 // SystemData represents all metadata for a single system.

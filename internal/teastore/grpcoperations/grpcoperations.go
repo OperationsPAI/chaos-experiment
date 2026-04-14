@@ -3,15 +3,14 @@
 package grpcoperations
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
 )
 
 // GRPCOperation is an alias for the shared type
 type GRPCOperation = resourcetypes.GRPCOperation
 
 // GRPCOperations maps service names to their gRPC operations
-var GRPCOperations = map[string][]GRPCOperation{
-}
+var GRPCOperations = map[string][]GRPCOperation{}
 
 // GetOperationsByService returns all gRPC operations for a service
 func GetOperationsByService(serviceName string) []GRPCOperation {

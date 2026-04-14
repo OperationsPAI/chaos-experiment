@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
-	tools "github.com/LGU-SE-Internal/chaos-experiment/tools/javaanalyzer"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
+	tools "github.com/OperationsPAI/chaos-experiment/tools/javaanalyzer"
 )
 
 func main() {

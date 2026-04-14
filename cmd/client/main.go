@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/chaos"
-	"github.com/LGU-SE-Internal/chaos-experiment/client"
-	"github.com/LGU-SE-Internal/chaos-experiment/controllers"
+	"github.com/OperationsPAI/chaos-experiment/chaos"
+	"github.com/OperationsPAI/chaos-experiment/client"
+	"github.com/OperationsPAI/chaos-experiment/controllers"
 	"k8s.io/utils/pointer"
 )
 

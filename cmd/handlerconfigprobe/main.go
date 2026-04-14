@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/handler"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcelookup"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/handler"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
+	"github.com/OperationsPAI/chaos-experiment/internal/serviceendpoints"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 var rangePattern = regexp.MustCompile(`^(-?\d+)-(-?\d+)$`)

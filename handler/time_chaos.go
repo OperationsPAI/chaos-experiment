@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
+	controllers "github.com/OperationsPAI/chaos-experiment/controllers"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"
 )

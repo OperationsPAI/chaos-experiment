@@ -4,14 +4,14 @@ package javamutatorconfig
 import (
 	"sort"
 
-	obmutator "github.com/LGU-SE-Internal/chaos-experiment/internal/ob/mutatorconfig"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	obmutator "github.com/OperationsPAI/chaos-experiment/internal/ob/mutatorconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 
-	oteldemomutator "github.com/LGU-SE-Internal/chaos-experiment/internal/oteldemo/mutatorconfig"
-	sockshopmutator "github.com/LGU-SE-Internal/chaos-experiment/internal/sockshop/mutatorconfig"
-	teastoremutator "github.com/LGU-SE-Internal/chaos-experiment/internal/teastore/mutatorconfig"
-	tsmutator "github.com/LGU-SE-Internal/chaos-experiment/internal/ts/mutatorconfig"
+	oteldemomutator "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/mutatorconfig"
+	sockshopmutator "github.com/OperationsPAI/chaos-experiment/internal/sockshop/mutatorconfig"
+	teastoremutator "github.com/OperationsPAI/chaos-experiment/internal/teastore/mutatorconfig"
+	tsmutator "github.com/OperationsPAI/chaos-experiment/internal/ts/mutatorconfig"
 )
 
 // MutationSpec is an alias to the shared runtime mutator type.

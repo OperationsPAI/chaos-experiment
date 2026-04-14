@@ -3,11 +3,11 @@ package handler
 import (
 	"testing"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/databaseoperations"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/grpcoperations"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/registry"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/databaseoperations"
+	"github.com/OperationsPAI/chaos-experiment/internal/grpcoperations"
+	"github.com/OperationsPAI/chaos-experiment/internal/registry"
+	"github.com/OperationsPAI/chaos-experiment/internal/serviceendpoints"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func TestRegisterSystemData(t *testing.T) {

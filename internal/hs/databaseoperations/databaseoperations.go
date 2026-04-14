@@ -3,7 +3,7 @@
 package databaseoperations
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
 )
 
 // DatabaseOperation is an alias for the shared type

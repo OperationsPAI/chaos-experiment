@@ -3,7 +3,7 @@ package databaseoperations
 import (
 	"testing"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 type mockDatabaseOperationProvider struct {

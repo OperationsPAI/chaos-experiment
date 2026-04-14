@@ -2,7 +2,7 @@
 package endpoint
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
 )
 
 // FromHTTP converts an HTTPEndpoint to a unified Endpoint

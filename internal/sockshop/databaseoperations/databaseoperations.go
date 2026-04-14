@@ -3,15 +3,14 @@
 package databaseoperations
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
 )
 
 // DatabaseOperation is an alias for the shared type
 type DatabaseOperation = resourcetypes.DatabaseOperation
 
 // DatabaseOperations maps service names to their database operations
-var DatabaseOperations = map[string][]DatabaseOperation{
-}
+var DatabaseOperations = map[string][]DatabaseOperation{}
 
 // GetOperationsByService returns all database operations for a service
 func GetOperationsByService(serviceName string) []DatabaseOperation {

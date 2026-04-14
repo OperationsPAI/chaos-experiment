@@ -50,10 +50,10 @@ The cmd/faultpoints has been fully migrated and demonstrates the new pattern:
 package main
 
 import (
-	_ "github.com/LGU-SE-Internal/chaos-experiment/internal/adapter" // Auto-registers all systems
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/endpoint"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/registry"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	_ "github.com/OperationsPAI/chaos-experiment/internal/adapter" // Auto-registers all systems
+	"github.com/OperationsPAI/chaos-experiment/internal/endpoint"
+	"github.com/OperationsPAI/chaos-experiment/internal/registry"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func main() {
@@ -96,8 +96,8 @@ func listHTTPEndpoints() {
 
 ```go
 import (
-    "github.com/LGU-SE-Internal/chaos-experiment/internal/registry"
-    "github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+    "github.com/OperationsPAI/chaos-experiment/internal/registry"
+    "github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 // Set current system (usually done once at startup)
@@ -120,8 +120,8 @@ dbOps := sysData.GetDatabaseOperationsByService("account service")
 
 ```go
 import (
-    "github.com/LGU-SE-Internal/chaos-experiment/internal/endpoint"
-    "github.com/LGU-SE-Internal/chaos-experiment/internal/registry"
+    "github.com/OperationsPAI/chaos-experiment/internal/endpoint"
+    "github.com/OperationsPAI/chaos-experiment/internal/registry"
 )
 
 sysData := registry.MustGetCurrent()
@@ -215,8 +215,8 @@ return sysData.GetHTTPEndpointsByService(service)
 OLD (cmd/faultpoints):
 ```go
 import (
-    hsendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/hs/serviceendpoints"
-    mediaendpoints "github.com/LGU-SE-Internal/chaos-experiment/internal/media/serviceendpoints"
+    hsendpoints "github.com/OperationsPAI/chaos-experiment/internal/hs/serviceendpoints"
+    mediaendpoints "github.com/OperationsPAI/chaos-experiment/internal/media/serviceendpoints"
     // ... 18+ imports ...
 )
 ```
@@ -224,8 +224,8 @@ import (
 NEW:
 ```go
 import (
-    "github.com/LGU-SE-Internal/chaos-experiment/internal/registry"
-    "github.com/LGU-SE-Internal/chaos-experiment/internal/endpoint"
+    "github.com/OperationsPAI/chaos-experiment/internal/registry"
+    "github.com/OperationsPAI/chaos-experiment/internal/endpoint"
 )
 ```
 
@@ -256,10 +256,10 @@ Example generated file structure:
 package data
 
 import (
-    "github.com/LGU-SE-Internal/chaos-experiment/internal/model"
-    "github.com/LGU-SE-Internal/chaos-experiment/internal/registry"
-    "github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
-    "github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+    "github.com/OperationsPAI/chaos-experiment/internal/model"
+    "github.com/OperationsPAI/chaos-experiment/internal/registry"
+    "github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
+    "github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func init() {

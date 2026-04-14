@@ -5,14 +5,14 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/client"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/databaseoperations"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/grpcoperations"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/javaclassmethods"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/javamutatorconfig"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/networkdependencies"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/serviceendpoints"
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/systemconfig"
+	"github.com/OperationsPAI/chaos-experiment/client"
+	"github.com/OperationsPAI/chaos-experiment/internal/databaseoperations"
+	"github.com/OperationsPAI/chaos-experiment/internal/grpcoperations"
+	"github.com/OperationsPAI/chaos-experiment/internal/javaclassmethods"
+	"github.com/OperationsPAI/chaos-experiment/internal/javamutatorconfig"
+	"github.com/OperationsPAI/chaos-experiment/internal/networkdependencies"
+	"github.com/OperationsPAI/chaos-experiment/internal/serviceendpoints"
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 	"github.com/sirupsen/logrus"
 )
 

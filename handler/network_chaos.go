@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	chaos "github.com/LGU-SE-Internal/chaos-experiment/chaos"
-	controllers "github.com/LGU-SE-Internal/chaos-experiment/controllers"
+	chaos "github.com/OperationsPAI/chaos-experiment/chaos"
+	controllers "github.com/OperationsPAI/chaos-experiment/controllers"
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"k8s.io/utils/pointer"
 	cli "sigs.k8s.io/controller-runtime/pkg/client"

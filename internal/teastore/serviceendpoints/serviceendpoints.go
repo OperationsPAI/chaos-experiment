@@ -3,7 +3,7 @@
 package serviceendpoints
 
 import (
-	"github.com/LGU-SE-Internal/chaos-experiment/internal/resourcetypes"
+	"github.com/OperationsPAI/chaos-experiment/internal/resourcetypes"
 )
 
 // ServiceEndpoint is an alias for the shared type

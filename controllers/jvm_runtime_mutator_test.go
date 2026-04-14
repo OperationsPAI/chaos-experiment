@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/LGU-SE-Internal/chaos-experiment/chaos"
+	"github.com/OperationsPAI/chaos-experiment/chaos"
 	"github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
