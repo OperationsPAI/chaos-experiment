@@ -1,5 +1,7 @@
 .idea
 .vscode
+.gocache
+.gopath
 
 # Compiled binaries (root level only)
 /internaldata
