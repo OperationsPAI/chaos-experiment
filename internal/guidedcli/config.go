@@ -111,6 +111,9 @@ func MergeConfig(fileCfg *ConfigFile, cliCfg GuidedConfig) GuidedConfig {
 }
 
 func overlayConfig(dst *GuidedConfig, src GuidedConfig) {
+	if hasRootOverride(src) {
+		clearRootSelection(dst)
+	}
 	if src.System != "" {
 		dst.System = src.System
 	}
@@ -121,11 +124,18 @@ func overlayConfig(dst *GuidedConfig, src GuidedConfig) {
 		dst.Namespace = src.Namespace
 	}
 	if src.App != "" {
+		if dst.App != src.App {
+			clearFromApp(dst)
+		}
 		dst.App = src.App
 	}
 	if src.ChaosType != "" {
+		if dst.ChaosType != src.ChaosType {
+			clearFromChaosType(dst)
+		}
 		dst.ChaosType = src.ChaosType
 	}
+
 	if src.Container != "" {
 		dst.Container = src.Container
 	}
@@ -135,29 +145,47 @@ func overlayConfig(dst *GuidedConfig, src GuidedConfig) {
 	if src.Domain != "" {
 		dst.Domain = src.Domain
 	}
-	if src.Class != "" {
-		dst.Class = src.Class
-	}
-	if src.Method != "" {
-		dst.Method = src.Method
+
+	if hasMethodOverride(src) {
+		if methodSelectionChanged(*dst, src) {
+			clearMethodSelection(dst)
+		}
+		if src.Class != "" {
+			dst.Class = src.Class
+		}
+		if src.Method != "" {
+			dst.Method = src.Method
+		}
 	}
 	if src.MutatorConfig != "" {
 		dst.MutatorConfig = src.MutatorConfig
 	}
-	if src.Route != "" {
-		dst.Route = src.Route
+
+	if hasEndpointOverride(src) {
+		if endpointSelectionChanged(*dst, src) {
+			clearEndpointSelection(dst)
+		}
+		if src.Route != "" {
+			dst.Route = src.Route
+		}
+		if src.HTTPMethod != "" {
+			dst.HTTPMethod = src.HTTPMethod
+		}
 	}
-	if src.HTTPMethod != "" {
-		dst.HTTPMethod = src.HTTPMethod
-	}
-	if src.Database != "" {
-		dst.Database = src.Database
-	}
-	if src.Table != "" {
-		dst.Table = src.Table
-	}
-	if src.Operation != "" {
-		dst.Operation = src.Operation
+
+	if hasDatabaseOverride(src) {
+		if databaseSelectionChanged(*dst, src) {
+			clearDatabaseSelection(dst)
+		}
+		if src.Database != "" {
+			dst.Database = src.Database
+		}
+		if src.Table != "" {
+			dst.Table = src.Table
+		}
+		if src.Operation != "" {
+			dst.Operation = src.Operation
+		}
 	}
 	if src.Duration != nil {
 		dst.Duration = src.Duration
@@ -243,4 +271,131 @@ func overlayConfig(dst *GuidedConfig, src GuidedConfig) {
 	dst.SaveConfig = src.SaveConfig
 	dst.ResetConfig = src.ResetConfig
 	dst.Apply = src.Apply
+}
+
+func hasRootOverride(cfg GuidedConfig) bool {
+	return cfg.System != "" || cfg.SystemType != "" || cfg.Namespace != ""
+}
+
+func hasMethodOverride(cfg GuidedConfig) bool {
+	return cfg.Class != "" || cfg.Method != ""
+}
+
+func hasEndpointOverride(cfg GuidedConfig) bool {
+	return cfg.Route != "" || cfg.HTTPMethod != ""
+}
+
+func hasDatabaseOverride(cfg GuidedConfig) bool {
+	return cfg.Database != "" || cfg.Table != "" || cfg.Operation != ""
+}
+
+func clearRootSelection(cfg *GuidedConfig) {
+	duration := cfg.Duration
+	*cfg = GuidedConfig{}
+	cfg.Duration = duration
+}
+
+func clearFromApp(cfg *GuidedConfig) {
+	cfg.App = ""
+	clearFromChaosType(cfg)
+}
+
+func clearFromChaosType(cfg *GuidedConfig) {
+	cfg.ChaosType = ""
+	clearTypeSelections(cfg)
+	clearTypeParameters(cfg)
+}
+
+func clearTypeSelections(cfg *GuidedConfig) {
+	cfg.Container = ""
+	cfg.TargetService = ""
+	cfg.Domain = ""
+	cfg.Class = ""
+	cfg.Method = ""
+	cfg.MutatorConfig = ""
+	cfg.Route = ""
+	cfg.HTTPMethod = ""
+	cfg.Database = ""
+	cfg.Table = ""
+	cfg.Operation = ""
+}
+
+func clearTypeParameters(cfg *GuidedConfig) {
+	cfg.MemorySize = nil
+	cfg.MemWorker = nil
+	cfg.TimeOffset = nil
+	cfg.CPULoad = nil
+	cfg.CPUWorker = nil
+	cfg.Latency = nil
+	cfg.Correlation = nil
+	cfg.Jitter = nil
+	cfg.Loss = nil
+	cfg.Duplicate = nil
+	cfg.Corrupt = nil
+	cfg.Rate = nil
+	cfg.Limit = nil
+	cfg.Buffer = nil
+	cfg.Direction = ""
+	cfg.DelayDuration = nil
+	cfg.LatencyDuration = nil
+	cfg.LatencyMs = nil
+	cfg.CPUCount = nil
+	cfg.ReturnType = ""
+	cfg.ReturnValueOpt = ""
+	cfg.ExceptionOpt = ""
+	cfg.MemType = ""
+	cfg.BodyType = ""
+	cfg.ReplaceMethod = ""
+	cfg.StatusCode = nil
+}
+
+func clearMethodSelection(cfg *GuidedConfig) {
+	cfg.Class = ""
+	cfg.Method = ""
+	cfg.MutatorConfig = ""
+}
+
+func clearEndpointSelection(cfg *GuidedConfig) {
+	cfg.Route = ""
+	cfg.HTTPMethod = ""
+	cfg.ReplaceMethod = ""
+}
+
+func clearDatabaseSelection(cfg *GuidedConfig) {
+	cfg.Database = ""
+	cfg.Table = ""
+	cfg.Operation = ""
+}
+
+func methodSelectionChanged(current GuidedConfig, incoming GuidedConfig) bool {
+	if incoming.Class != "" && incoming.Class != current.Class {
+		return true
+	}
+	if incoming.Method != "" && incoming.Method != current.Method {
+		return true
+	}
+	return false
+}
+
+func endpointSelectionChanged(current GuidedConfig, incoming GuidedConfig) bool {
+	if incoming.Route != "" && incoming.Route != current.Route {
+		return true
+	}
+	if incoming.HTTPMethod != "" && incoming.HTTPMethod != current.HTTPMethod {
+		return true
+	}
+	return false
+}
+
+func databaseSelectionChanged(current GuidedConfig, incoming GuidedConfig) bool {
+	if incoming.Database != "" && incoming.Database != current.Database {
+		return true
+	}
+	if incoming.Table != "" && incoming.Table != current.Table {
+		return true
+	}
+	if incoming.Operation != "" && incoming.Operation != current.Operation {
+		return true
+	}
+	return false
 }

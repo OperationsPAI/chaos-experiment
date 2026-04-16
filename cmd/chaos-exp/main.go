@@ -13,8 +13,10 @@ import (
 
 func main() {
 	cfgPath := flag.String("config", "", "Path to the guided CLI config file")
-	saveConfig := flag.Bool("save-config", false, "Persist the returned config snapshot to the config file")
+	saveConfig := flag.Bool("save-config", true, "Persist the returned config snapshot to the config file")
+	noSaveConfig := flag.Bool("no-save-config", false, "Do not persist the guided session after this call")
 	resetConfig := flag.Bool("reset-config", false, "Reset the saved guided session before resolving")
+	nextValue := flag.String("next", "", "Apply a single next-step selection using the current guided session state")
 	output := flag.String("output", "json", "Output format: json|yaml")
 
 	system := flag.String("system", "", "System namespace instance, for example ts0")
@@ -72,6 +74,7 @@ func main() {
 	if *resetConfig {
 		fileCfg.GuidedSession = guidedcli.GuidedSession{}
 	}
+	effectiveSaveConfig := *saveConfig && !*noSaveConfig
 
 	cliCfg := guidedcli.GuidedConfig{
 		System:         *system,
@@ -97,7 +100,7 @@ func main() {
 		BodyType:       *bodyType,
 		ReplaceMethod:  *replaceMethod,
 		Apply:          *apply,
-		SaveConfig:     *saveConfig,
+		SaveConfig:     effectiveSaveConfig,
 		ResetConfig:    *resetConfig,
 	}
 
@@ -163,13 +166,29 @@ func main() {
 	}
 
 	merged := guidedcli.MergeConfig(fileCfg, cliCfg)
+	if *nextValue != "" {
+		current, err := guidedcli.Resolve(context.Background(), merged)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to resolve current guided response: %v\n", err)
+			os.Exit(1)
+		}
+		merged, err = guidedcli.ApplyNextSelection(current, *nextValue)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to apply --next: %v\n", err)
+			os.Exit(1)
+		}
+		merged.SaveConfig = effectiveSaveConfig
+		merged.ResetConfig = *resetConfig
+		merged.Apply = *apply
+	}
+
 	response, err := guidedcli.Resolve(context.Background(), merged)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to resolve guided response: %v\n", err)
 		os.Exit(1)
 	}
 
-	if *saveConfig {
+	if effectiveSaveConfig {
 		if err := guidedcli.SaveConfig(*cfgPath, fileCfg, response.Config); err != nil {
 			fmt.Fprintf(os.Stderr, "failed to save config: %v\n", err)
 			os.Exit(1)
