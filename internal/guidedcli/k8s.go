@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/OperationsPAI/chaos-experiment/internal/networkdependencies"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -17,7 +18,7 @@ import (
 func safeAppLabels(namespace string, systemType systemconfig.SystemType) ([]string, error) {
 	pods, err := listPodsSafe(namespace)
 	if err != nil {
-		fallback := serviceendpoints.GetAllServices()
+		fallback := filteredServiceLabels(serviceendpoints.GetAllServices())
 		sort.Strings(fallback)
 		if len(fallback) > 0 {
 			return fallback, nil
@@ -35,11 +36,15 @@ func safeAppLabels(namespace string, systemType systemconfig.SystemType) ([]stri
 	}
 	sort.Strings(labels)
 	if len(labels) == 0 {
-		fallback := serviceendpoints.GetAllServices()
+		fallback := filteredServiceLabels(serviceendpoints.GetAllServices())
 		sort.Strings(fallback)
 		return fallback, nil
 	}
-	return labels, nil
+	filtered := filteredServiceLabels(labels)
+	if len(filtered) == 0 {
+		return labels, nil
+	}
+	return filtered, nil
 }
 
 func safeContainers(namespace string) ([]resourcelookup.ContainerInfo, error) {
@@ -81,4 +86,36 @@ func listPodsSafe(namespace string) ([]corev1.Pod, error) {
 		return nil, fmt.Errorf("list pods in namespace %s: %w", namespace, err)
 	}
 	return list.Items, nil
+}
+
+func filteredServiceLabels(labels []string) []string {
+	allowed := networkSourceServices()
+	if len(allowed) == 0 {
+		return labels
+	}
+
+	result := make([]string, 0, len(labels))
+	seen := make(map[string]bool, len(labels))
+	for _, label := range labels {
+		if allowed[label] && !seen[label] {
+			seen[label] = true
+			result = append(result, label)
+		}
+	}
+	return result
+}
+
+func networkSourceServices() map[string]bool {
+	pairs := networkdependencies.GetAllServicePairs()
+	if len(pairs) == 0 {
+		return nil
+	}
+
+	allowed := make(map[string]bool, len(pairs))
+	for _, pair := range pairs {
+		if pair.SourceService != "" {
+			allowed[pair.SourceService] = true
+		}
+	}
+	return allowed
 }
