@@ -18,14 +18,32 @@ type GuidedConfig struct {
 	Table           string `json:"table,omitempty" yaml:"table,omitempty"`
 	Operation       string `json:"operation,omitempty" yaml:"operation,omitempty"`
 	Duration        *int   `json:"duration,omitempty" yaml:"duration,omitempty"`
+	MemorySize      *int   `json:"memory_size,omitempty" yaml:"memory_size,omitempty"`
+	MemWorker       *int   `json:"mem_worker,omitempty" yaml:"mem_worker,omitempty"`
+	TimeOffset      *int   `json:"time_offset,omitempty" yaml:"time_offset,omitempty"`
 	CPULoad         *int   `json:"cpu_load,omitempty" yaml:"cpu_load,omitempty"`
 	CPUWorker       *int   `json:"cpu_worker,omitempty" yaml:"cpu_worker,omitempty"`
 	Latency         *int   `json:"latency,omitempty" yaml:"latency,omitempty"`
 	Correlation     *int   `json:"correlation,omitempty" yaml:"correlation,omitempty"`
 	Jitter          *int   `json:"jitter,omitempty" yaml:"jitter,omitempty"`
+	Loss            *int   `json:"loss,omitempty" yaml:"loss,omitempty"`
+	Duplicate       *int   `json:"duplicate,omitempty" yaml:"duplicate,omitempty"`
+	Corrupt         *int   `json:"corrupt,omitempty" yaml:"corrupt,omitempty"`
+	Rate            *int   `json:"rate,omitempty" yaml:"rate,omitempty"`
+	Limit           *int   `json:"limit,omitempty" yaml:"limit,omitempty"`
+	Buffer          *int   `json:"buffer,omitempty" yaml:"buffer,omitempty"`
 	Direction       string `json:"direction,omitempty" yaml:"direction,omitempty"`
 	DelayDuration   *int   `json:"delay_duration,omitempty" yaml:"delay_duration,omitempty"`
 	LatencyDuration *int   `json:"latency_duration,omitempty" yaml:"latency_duration,omitempty"`
+	LatencyMs       *int   `json:"latency_ms,omitempty" yaml:"latency_ms,omitempty"`
+	CPUCount        *int   `json:"cpu_count,omitempty" yaml:"cpu_count,omitempty"`
+	ReturnType      string `json:"return_type,omitempty" yaml:"return_type,omitempty"`
+	ReturnValueOpt  string `json:"return_value_opt,omitempty" yaml:"return_value_opt,omitempty"`
+	ExceptionOpt    string `json:"exception_opt,omitempty" yaml:"exception_opt,omitempty"`
+	MemType         string `json:"mem_type,omitempty" yaml:"mem_type,omitempty"`
+	BodyType        string `json:"body_type,omitempty" yaml:"body_type,omitempty"`
+	ReplaceMethod   string `json:"replace_method,omitempty" yaml:"replace_method,omitempty"`
+	StatusCode      *int   `json:"status_code,omitempty" yaml:"status_code,omitempty"`
 	SaveConfig      bool   `json:"-" yaml:"-"`
 	ResetConfig     bool   `json:"-" yaml:"-"`
 	Apply           bool   `json:"-" yaml:"-"`

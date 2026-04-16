@@ -162,6 +162,15 @@ func overlayConfig(dst *GuidedConfig, src GuidedConfig) {
 	if src.Duration != nil {
 		dst.Duration = src.Duration
 	}
+	if src.MemorySize != nil {
+		dst.MemorySize = src.MemorySize
+	}
+	if src.MemWorker != nil {
+		dst.MemWorker = src.MemWorker
+	}
+	if src.TimeOffset != nil {
+		dst.TimeOffset = src.TimeOffset
+	}
 	if src.CPULoad != nil {
 		dst.CPULoad = src.CPULoad
 	}
@@ -177,6 +186,24 @@ func overlayConfig(dst *GuidedConfig, src GuidedConfig) {
 	if src.Jitter != nil {
 		dst.Jitter = src.Jitter
 	}
+	if src.Loss != nil {
+		dst.Loss = src.Loss
+	}
+	if src.Duplicate != nil {
+		dst.Duplicate = src.Duplicate
+	}
+	if src.Corrupt != nil {
+		dst.Corrupt = src.Corrupt
+	}
+	if src.Rate != nil {
+		dst.Rate = src.Rate
+	}
+	if src.Limit != nil {
+		dst.Limit = src.Limit
+	}
+	if src.Buffer != nil {
+		dst.Buffer = src.Buffer
+	}
 	if src.Direction != "" {
 		dst.Direction = src.Direction
 	}
@@ -185,6 +212,33 @@ func overlayConfig(dst *GuidedConfig, src GuidedConfig) {
 	}
 	if src.LatencyDuration != nil {
 		dst.LatencyDuration = src.LatencyDuration
+	}
+	if src.LatencyMs != nil {
+		dst.LatencyMs = src.LatencyMs
+	}
+	if src.CPUCount != nil {
+		dst.CPUCount = src.CPUCount
+	}
+	if src.ReturnType != "" {
+		dst.ReturnType = src.ReturnType
+	}
+	if src.ReturnValueOpt != "" {
+		dst.ReturnValueOpt = src.ReturnValueOpt
+	}
+	if src.ExceptionOpt != "" {
+		dst.ExceptionOpt = src.ExceptionOpt
+	}
+	if src.MemType != "" {
+		dst.MemType = src.MemType
+	}
+	if src.BodyType != "" {
+		dst.BodyType = src.BodyType
+	}
+	if src.ReplaceMethod != "" {
+		dst.ReplaceMethod = src.ReplaceMethod
+	}
+	if src.StatusCode != nil {
+		dst.StatusCode = src.StatusCode
 	}
 	dst.SaveConfig = src.SaveConfig
 	dst.ResetConfig = src.ResetConfig

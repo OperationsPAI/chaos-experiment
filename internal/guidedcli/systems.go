@@ -261,6 +261,15 @@ func resolvedMap(cfg GuidedConfig) map[string]any {
 	if cfg.Duration != nil {
 		result["duration"] = *cfg.Duration
 	}
+	if cfg.MemorySize != nil {
+		result["memory_size"] = *cfg.MemorySize
+	}
+	if cfg.MemWorker != nil {
+		result["mem_worker"] = *cfg.MemWorker
+	}
+	if cfg.TimeOffset != nil {
+		result["time_offset"] = *cfg.TimeOffset
+	}
 	if cfg.CPULoad != nil {
 		result["cpu_load"] = *cfg.CPULoad
 	}
@@ -276,12 +285,45 @@ func resolvedMap(cfg GuidedConfig) map[string]any {
 	if cfg.Jitter != nil {
 		result["jitter"] = *cfg.Jitter
 	}
+	if cfg.Loss != nil {
+		result["loss"] = *cfg.Loss
+	}
+	if cfg.Duplicate != nil {
+		result["duplicate"] = *cfg.Duplicate
+	}
+	if cfg.Corrupt != nil {
+		result["corrupt"] = *cfg.Corrupt
+	}
+	if cfg.Rate != nil {
+		result["rate"] = *cfg.Rate
+	}
+	if cfg.Limit != nil {
+		result["limit"] = *cfg.Limit
+	}
+	if cfg.Buffer != nil {
+		result["buffer"] = *cfg.Buffer
+	}
 	addString("direction", cfg.Direction)
 	if cfg.DelayDuration != nil {
 		result["delay_duration"] = *cfg.DelayDuration
 	}
 	if cfg.LatencyDuration != nil {
 		result["latency_duration"] = *cfg.LatencyDuration
+	}
+	if cfg.LatencyMs != nil {
+		result["latency_ms"] = *cfg.LatencyMs
+	}
+	if cfg.CPUCount != nil {
+		result["cpu_count"] = *cfg.CPUCount
+	}
+	addString("return_type", cfg.ReturnType)
+	addString("return_value_opt", cfg.ReturnValueOpt)
+	addString("exception_opt", cfg.ExceptionOpt)
+	addString("mem_type", cfg.MemType)
+	addString("body_type", cfg.BodyType)
+	addString("replace_method", cfg.ReplaceMethod)
+	if cfg.StatusCode != nil {
+		result["status_code"] = *cfg.StatusCode
 	}
 	return result
 }
