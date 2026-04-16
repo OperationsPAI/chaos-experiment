@@ -1210,8 +1210,10 @@ func dnsDomainsByApp(systemType systemconfig.SystemType, app string) ([]resource
 		return nil, err
 	}
 	result := make([]resourcelookup.AppDNSPair, 0)
+	seen := map[string]bool{}
 	for _, endpoint := range endpoints {
-		if endpoint.AppName == app {
+		if endpoint.AppName == app && !seen[endpoint.Domain] {
+			seen[endpoint.Domain] = true
 			result = append(result, endpoint)
 		}
 	}
@@ -1227,8 +1229,11 @@ func databaseOpsByApp(systemType systemconfig.SystemType, app string) ([]resourc
 		return nil, err
 	}
 	result := make([]resourcelookup.AppDatabasePair, 0)
+	seen := map[string]bool{}
 	for _, op := range operations {
-		if op.AppName == app {
+		key := strings.Join([]string{op.DBName, op.TableName, op.OperationType}, "|")
+		if op.AppName == app && !seen[key] {
+			seen[key] = true
 			result = append(result, op)
 		}
 	}
@@ -1250,8 +1255,11 @@ func httpEndpointsByApp(systemType systemconfig.SystemType, app string) ([]resou
 		return nil, err
 	}
 	result := make([]resourcelookup.AppEndpointPair, 0)
+	seen := map[string]bool{}
 	for _, endpoint := range endpoints {
-		if endpoint.AppName == app {
+		key := strings.Join([]string{endpoint.Method, endpoint.Route, endpoint.ServerAddress, endpoint.ServerPort}, "|")
+		if endpoint.AppName == app && !seen[key] {
+			seen[key] = true
 			result = append(result, endpoint)
 		}
 	}
