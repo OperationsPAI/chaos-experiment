@@ -6,23 +6,12 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/OperationsPAI/chaos-experiment/internal/databaseoperations"
 	"github.com/OperationsPAI/chaos-experiment/internal/grpcoperations"
 	"github.com/OperationsPAI/chaos-experiment/internal/javaclassmethods"
 	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
+	"github.com/OperationsPAI/chaos-experiment/internal/serviceendpoints"
 	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
-
-	hsdb "github.com/OperationsPAI/chaos-experiment/internal/hs/databaseoperations"
-	hsendpoints "github.com/OperationsPAI/chaos-experiment/internal/hs/serviceendpoints"
-	mediadb "github.com/OperationsPAI/chaos-experiment/internal/media/databaseoperations"
-	mediaendpoints "github.com/OperationsPAI/chaos-experiment/internal/media/serviceendpoints"
-	obendpoints "github.com/OperationsPAI/chaos-experiment/internal/ob/serviceendpoints"
-	oteldemodb "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/databaseoperations"
-	oteldemogrpc "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/grpcoperations"
-	oteldemoendpoints "github.com/OperationsPAI/chaos-experiment/internal/oteldemo/serviceendpoints"
-	sndb "github.com/OperationsPAI/chaos-experiment/internal/sn/databaseoperations"
-	snendpoints "github.com/OperationsPAI/chaos-experiment/internal/sn/serviceendpoints"
-	tsdb "github.com/OperationsPAI/chaos-experiment/internal/ts/databaseoperations"
-	tsendpoints "github.com/OperationsPAI/chaos-experiment/internal/ts/serviceendpoints"
 )
 
 func main() {
@@ -317,22 +306,8 @@ func showSummary() {
 // ============================================================================
 
 func getHTTPEndpointsForCurrentSystem() ([]resourcelookup.AppEndpointPair, error) {
-	// Build the result from system-specific data
-	var services []string
-	switch systemconfig.GetCurrentSystem() {
-	case systemconfig.SystemTrainTicket:
-		services = tsendpoints.GetAllServices()
-	case systemconfig.SystemOtelDemo:
-		services = oteldemoendpoints.GetAllServices()
-	case systemconfig.SystemMediaMicroservices:
-		services = mediaendpoints.GetAllServices()
-	case systemconfig.SystemHotelReservation:
-		services = hsendpoints.GetAllServices()
-	case systemconfig.SystemSocialNetwork:
-		services = snendpoints.GetAllServices()
-	case systemconfig.SystemOnlineBoutique:
-		services = obendpoints.GetAllServices()
-	default:
+	services := serviceendpoints.GetAllServices()
+	if len(services) == 0 {
 		cache := resourcelookup.GetSystemCache(systemconfig.GetCurrentSystem())
 		if cache != nil {
 			return cache.GetAllHTTPEndpoints()
@@ -342,123 +317,26 @@ func getHTTPEndpointsForCurrentSystem() ([]resourcelookup.AppEndpointPair, error
 
 	result := make([]resourcelookup.AppEndpointPair, 0)
 	for _, serviceName := range services {
-		var endpoints interface{}
-		switch systemconfig.GetCurrentSystem() {
-		case systemconfig.SystemTrainTicket:
-			endpoints = tsendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemOtelDemo:
-			endpoints = oteldemoendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemMediaMicroservices:
-			endpoints = mediaendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemHotelReservation:
-			endpoints = hsendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemSocialNetwork:
-			endpoints = snendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemOnlineBoutique:
-			endpoints = obendpoints.GetEndpointsByService(serviceName)
-		}
-
-		switch eps := endpoints.(type) {
-		case []tsendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.Route != "" && ep.ServerAddress != "ts-rabbitmq" {
-					result = append(result, resourcelookup.AppEndpointPair{
-						AppName:       serviceName,
-						Route:         ep.Route,
-						Method:        ep.RequestMethod,
-						ServerAddress: ep.ServerAddress,
-						ServerPort:    ep.ServerPort,
-						SpanName:      ep.SpanName,
-					})
-				}
+		for _, ep := range serviceendpoints.GetEndpointsByService(serviceName) {
+			if ep.Route == "" || ep.ServerAddress == "ts-rabbitmq" {
+				continue
 			}
-		case []oteldemoendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.Route != "" {
-					result = append(result, resourcelookup.AppEndpointPair{
-						AppName:       serviceName,
-						Route:         ep.Route,
-						Method:        ep.RequestMethod,
-						ServerAddress: ep.ServerAddress,
-						ServerPort:    ep.ServerPort,
-						SpanName:      ep.SpanName,
-					})
-				}
-			}
-		case []mediaendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.Route != "" {
-					result = append(result, resourcelookup.AppEndpointPair{
-						AppName:       serviceName,
-						Route:         ep.Route,
-						Method:        ep.RequestMethod,
-						ServerAddress: ep.ServerAddress,
-						ServerPort:    ep.ServerPort,
-						SpanName:      ep.SpanName,
-					})
-				}
-			}
-		case []hsendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.Route != "" {
-					result = append(result, resourcelookup.AppEndpointPair{
-						AppName:       serviceName,
-						Route:         ep.Route,
-						Method:        ep.RequestMethod,
-						ServerAddress: ep.ServerAddress,
-						ServerPort:    ep.ServerPort,
-						SpanName:      ep.SpanName,
-					})
-				}
-			}
-		case []snendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.Route != "" {
-					result = append(result, resourcelookup.AppEndpointPair{
-						AppName:       serviceName,
-						Route:         ep.Route,
-						Method:        ep.RequestMethod,
-						ServerAddress: ep.ServerAddress,
-						ServerPort:    ep.ServerPort,
-						SpanName:      ep.SpanName,
-					})
-				}
-			}
-		case []obendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.Route != "" {
-					result = append(result, resourcelookup.AppEndpointPair{
-						AppName:       serviceName,
-						Route:         ep.Route,
-						Method:        ep.RequestMethod,
-						ServerAddress: ep.ServerAddress,
-						ServerPort:    ep.ServerPort,
-						SpanName:      ep.SpanName,
-					})
-				}
-			}
+			result = append(result, resourcelookup.AppEndpointPair{
+				AppName:       serviceName,
+				Route:         ep.Route,
+				Method:        ep.RequestMethod,
+				ServerAddress: ep.ServerAddress,
+				ServerPort:    ep.ServerPort,
+				SpanName:      ep.SpanName,
+			})
 		}
 	}
 	return result, nil
 }
 
 func getNetworkPairsForCurrentSystem() ([]resourcelookup.AppNetworkPair, error) {
-	// Build network pairs from service endpoints
-	var services []string
-	switch systemconfig.GetCurrentSystem() {
-	case systemconfig.SystemTrainTicket:
-		services = tsendpoints.GetAllServices()
-	case systemconfig.SystemOtelDemo:
-		services = oteldemoendpoints.GetAllServices()
-	case systemconfig.SystemMediaMicroservices:
-		services = mediaendpoints.GetAllServices()
-	case systemconfig.SystemHotelReservation:
-		services = hsendpoints.GetAllServices()
-	case systemconfig.SystemSocialNetwork:
-		services = snendpoints.GetAllServices()
-	case systemconfig.SystemOnlineBoutique:
-		services = obendpoints.GetAllServices()
-	default:
+	services := serviceendpoints.GetAllServices()
+	if len(services) == 0 {
 		cache := resourcelookup.GetSystemCache(systemconfig.GetCurrentSystem())
 		if cache != nil {
 			return cache.GetAllNetworkPairs()
@@ -470,112 +348,19 @@ func getNetworkPairsForCurrentSystem() ([]resourcelookup.AppNetworkPair, error) 
 	pairMap := make(map[string]map[string][]string) // source -> target -> spanNames
 
 	for _, serviceName := range services {
-		var endpoints interface{}
-		switch systemconfig.GetCurrentSystem() {
-		case systemconfig.SystemTrainTicket:
-			endpoints = tsendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemOtelDemo:
-			endpoints = oteldemoendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemMediaMicroservices:
-			endpoints = mediaendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemHotelReservation:
-			endpoints = hsendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemSocialNetwork:
-			endpoints = snendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemOnlineBoutique:
-			endpoints = obendpoints.GetEndpointsByService(serviceName)
-		}
-
-		switch eps := endpoints.(type) {
-		case []tsendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
+		for _, ep := range serviceendpoints.GetEndpointsByService(serviceName) {
+			if ep.ServerAddress == "" || ep.ServerAddress == serviceName {
+				continue
 			}
-		case []oteldemoendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
+			if pairMap[serviceName] == nil {
+				pairMap[serviceName] = make(map[string][]string)
 			}
-		case []mediaendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
+			if ep.SpanName != "" {
+				pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
+				continue
 			}
-		case []hsendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
-			}
-		case []snendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
-			}
-		case []obendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
+			if pairMap[serviceName][ep.ServerAddress] == nil {
+				pairMap[serviceName][ep.ServerAddress] = []string{}
 			}
 		}
 	}
@@ -595,24 +380,8 @@ func getNetworkPairsForCurrentSystem() ([]resourcelookup.AppNetworkPair, error) 
 }
 
 func getDNSEndpointsForCurrentSystem() ([]resourcelookup.AppDNSPair, error) {
-	// Build DNS pairs from service endpoints (similar to network pairs)
-	// Note: DNS chaos does NOT work for gRPC-only connections, so we filter those out
-	// We use grpcoperations data to identify which service pairs only use gRPC
-	var services []string
-	switch systemconfig.GetCurrentSystem() {
-	case systemconfig.SystemTrainTicket:
-		services = tsendpoints.GetAllServices()
-	case systemconfig.SystemOtelDemo:
-		services = oteldemoendpoints.GetAllServices()
-	case systemconfig.SystemMediaMicroservices:
-		services = mediaendpoints.GetAllServices()
-	case systemconfig.SystemHotelReservation:
-		services = hsendpoints.GetAllServices()
-	case systemconfig.SystemSocialNetwork:
-		services = snendpoints.GetAllServices()
-	case systemconfig.SystemOnlineBoutique:
-		services = obendpoints.GetAllServices()
-	default:
+	services := serviceendpoints.GetAllServices()
+	if len(services) == 0 {
 		cache := resourcelookup.GetSystemCache(systemconfig.GetCurrentSystem())
 		if cache != nil {
 			return cache.GetAllDNSEndpoints()
@@ -627,112 +396,19 @@ func getDNSEndpointsForCurrentSystem() ([]resourcelookup.AppDNSPair, error) {
 	pairMap := make(map[string]map[string][]string) // source -> domain -> spanNames
 
 	for _, serviceName := range services {
-		var endpoints interface{}
-		switch systemconfig.GetCurrentSystem() {
-		case systemconfig.SystemTrainTicket:
-			endpoints = tsendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemOtelDemo:
-			endpoints = oteldemoendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemMediaMicroservices:
-			endpoints = mediaendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemHotelReservation:
-			endpoints = hsendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemSocialNetwork:
-			endpoints = snendpoints.GetEndpointsByService(serviceName)
-		case systemconfig.SystemOnlineBoutique:
-			endpoints = obendpoints.GetEndpointsByService(serviceName)
-		}
-
-		switch eps := endpoints.(type) {
-		case []tsendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
+		for _, ep := range serviceendpoints.GetEndpointsByService(serviceName) {
+			if ep.ServerAddress == "" || ep.ServerAddress == serviceName {
+				continue
 			}
-		case []oteldemoendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
+			if pairMap[serviceName] == nil {
+				pairMap[serviceName] = make(map[string][]string)
 			}
-		case []mediaendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
+			if ep.SpanName != "" {
+				pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
+				continue
 			}
-		case []hsendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
-			}
-		case []snendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
-			}
-		case []obendpoints.ServiceEndpoint:
-			for _, ep := range eps {
-				if ep.ServerAddress != "" && ep.ServerAddress != serviceName {
-					if pairMap[serviceName] == nil {
-						pairMap[serviceName] = make(map[string][]string)
-					}
-					if ep.SpanName != "" {
-						pairMap[serviceName][ep.ServerAddress] = appendUnique(pairMap[serviceName][ep.ServerAddress], ep.SpanName)
-					} else {
-						if pairMap[serviceName][ep.ServerAddress] == nil {
-							pairMap[serviceName][ep.ServerAddress] = []string{}
-						}
-					}
-				}
+			if pairMap[serviceName][ep.ServerAddress] == nil {
+				pairMap[serviceName][ep.ServerAddress] = []string{}
 			}
 		}
 	}
@@ -762,13 +438,8 @@ func getDNSEndpointsForCurrentSystem() ([]resourcelookup.AppDNSPair, error) {
 func buildGRPCOnlyPairsForFaultpoints() map[string]bool {
 	grpcOnlyPairs := make(map[string]bool)
 
-	// Only OtelDemo has gRPC operations
-	if systemconfig.GetCurrentSystem() != systemconfig.SystemOtelDemo {
-		return grpcOnlyPairs
-	}
-
 	// Get all gRPC client operations (these represent outgoing gRPC calls)
-	grpcOps := oteldemogrpc.GetClientOperations()
+	grpcOps := grpcoperations.GetClientOperations()
 
 	// Track which service pairs have gRPC connections
 	grpcPairs := make(map[string]bool)
@@ -778,11 +449,11 @@ func buildGRPCOnlyPairsForFaultpoints() map[string]bool {
 	}
 
 	// Get all service endpoints to check which pairs also have HTTP
-	services := oteldemoendpoints.GetAllServices()
+	services := serviceendpoints.GetAllServices()
 	httpPairs := make(map[string]bool)
 
 	for _, serviceName := range services {
-		endpoints := oteldemoendpoints.GetEndpointsByService(serviceName)
+		endpoints := serviceendpoints.GetEndpointsByService(serviceName)
 		for _, endpoint := range endpoints {
 			// HTTP endpoints have non-empty Route that doesn't look like gRPC
 			if endpoint.ServerAddress != "" && endpoint.ServerAddress != serviceName {
@@ -830,19 +501,8 @@ func getJVMMethodsForCurrentSystem() ([]resourcelookup.AppMethodPair, error) {
 
 func getDatabaseOperationsForCurrentSystem() ([]resourcelookup.AppDatabasePair, error) {
 	// Note: DB chaos only supports MySQL, so we filter to only return MySQL operations
-	var services []string
-	switch systemconfig.GetCurrentSystem() {
-	case systemconfig.SystemTrainTicket:
-		services = tsdb.GetAllDatabaseServices()
-	case systemconfig.SystemOtelDemo:
-		services = oteldemodb.GetAllDatabaseServices()
-	case systemconfig.SystemMediaMicroservices:
-		services = mediadb.GetAllDatabaseServices()
-	case systemconfig.SystemHotelReservation:
-		services = hsdb.GetAllDatabaseServices()
-	case systemconfig.SystemSocialNetwork:
-		services = sndb.GetAllDatabaseServices()
-	default:
+	services := databaseoperations.GetAllDatabaseServices()
+	if len(services) == 0 {
 		cache := resourcelookup.GetSystemCache(systemconfig.GetCurrentSystem())
 		if cache != nil {
 			return cache.GetAllDatabaseOperations()
@@ -852,72 +512,16 @@ func getDatabaseOperationsForCurrentSystem() ([]resourcelookup.AppDatabasePair, 
 
 	result := make([]resourcelookup.AppDatabasePair, 0)
 	for _, serviceName := range services {
-		switch systemconfig.GetCurrentSystem() {
-		case systemconfig.SystemTrainTicket:
-			ops := tsdb.GetOperationsByService(serviceName)
-			for _, op := range ops {
-				// Only include MySQL operations (DB chaos only supports MySQL)
-				if op.DBSystem == "mysql" {
-					result = append(result, resourcelookup.AppDatabasePair{
-						AppName:       serviceName,
-						DBName:        op.DBName,
-						TableName:     op.DBTable,
-						OperationType: op.Operation,
-					})
-				}
+		for _, op := range databaseoperations.GetOperationsByService(serviceName) {
+			if op.DBSystem != "mysql" {
+				continue
 			}
-		case systemconfig.SystemOtelDemo:
-			ops := oteldemodb.GetOperationsByService(serviceName)
-			for _, op := range ops {
-				// Only include MySQL operations (DB chaos only supports MySQL)
-				if op.DBSystem == "mysql" {
-					result = append(result, resourcelookup.AppDatabasePair{
-						AppName:       serviceName,
-						DBName:        op.DBName,
-						TableName:     op.DBTable,
-						OperationType: op.Operation,
-					})
-				}
-			}
-		case systemconfig.SystemMediaMicroservices:
-			ops := mediadb.GetOperationsByService(serviceName)
-			for _, op := range ops {
-				// Only include MySQL operations (DB chaos only supports MySQL)
-				if op.DBSystem == "mysql" {
-					result = append(result, resourcelookup.AppDatabasePair{
-						AppName:       serviceName,
-						DBName:        op.DBName,
-						TableName:     op.DBTable,
-						OperationType: op.Operation,
-					})
-				}
-			}
-		case systemconfig.SystemHotelReservation:
-			ops := hsdb.GetOperationsByService(serviceName)
-			for _, op := range ops {
-				// Only include MySQL operations (DB chaos only supports MySQL)
-				if op.DBSystem == "mysql" {
-					result = append(result, resourcelookup.AppDatabasePair{
-						AppName:       serviceName,
-						DBName:        op.DBName,
-						TableName:     op.DBTable,
-						OperationType: op.Operation,
-					})
-				}
-			}
-		case systemconfig.SystemSocialNetwork:
-			ops := sndb.GetOperationsByService(serviceName)
-			for _, op := range ops {
-				// Only include MySQL operations (DB chaos only supports MySQL)
-				if op.DBSystem == "mysql" {
-					result = append(result, resourcelookup.AppDatabasePair{
-						AppName:       serviceName,
-						DBName:        op.DBName,
-						TableName:     op.DBTable,
-						OperationType: op.Operation,
-					})
-				}
-			}
+			result = append(result, resourcelookup.AppDatabasePair{
+				AppName:       serviceName,
+				DBName:        op.DBName,
+				TableName:     op.DBTable,
+				OperationType: op.Operation,
+			})
 		}
 	}
 	return result, nil

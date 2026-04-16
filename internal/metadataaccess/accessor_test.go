@@ -421,3 +421,44 @@ func TestMetadataAccessorDynamicRegistration(t *testing.T) {
 		t.Fatalf("unexpected Java methods: %#v", methods)
 	}
 }
+
+func TestMetadataAccessorConvenienceRegistrationForNewSystems(t *testing.T) {
+	accessor := GetAccessor()
+	accessor.Clear()
+
+	sockShopAccessor := &MockServiceEndpointAccessor{
+		services: []string{"carts"},
+		endpoints: map[string][]ServiceEndpoint{
+			"carts": {
+				{ServiceName: "carts", Route: "/carts"},
+			},
+		},
+	}
+	teaStoreAccessor := &MockJavaMethodAccessor{
+		services: []string{"teastore-webui"},
+		methods: map[string][]JavaClassMethod{
+			"teastore-webui": {
+				{ClassName: "tools.descartes.teastore.webui.Servlet", MethodName: "doGet"},
+			},
+		},
+	}
+
+	accessor.RegisterSockShopServiceEndpoints(sockShopAccessor)
+	accessor.RegisterTeaStoreJavaMethods(teaStoreAccessor)
+
+	_ = systemconfig.SetCurrentSystem(systemconfig.SystemSockShop)
+	if !accessor.HasServiceEndpoints() {
+		t.Fatal("SockShop should expose service endpoints via convenience registration")
+	}
+	if endpoints := accessor.GetEndpointsByService("carts"); len(endpoints) != 1 || endpoints[0].Route != "/carts" {
+		t.Fatalf("unexpected SockShop endpoints: %#v", endpoints)
+	}
+
+	_ = systemconfig.SetCurrentSystem(systemconfig.SystemTeaStore)
+	if !accessor.HasJavaMethods() {
+		t.Fatal("TeaStore should expose Java methods via convenience registration")
+	}
+	if methods := accessor.GetJavaMethodsByService("teastore-webui"); len(methods) != 1 || methods[0].MethodName != "doGet" {
+		t.Fatalf("unexpected TeaStore Java methods: %#v", methods)
+	}
+}

@@ -22,6 +22,8 @@ const (
 	SystemHotelReservation   = SystemType(systemconfig.SystemHotelReservation)
 	SystemSocialNetwork      = SystemType(systemconfig.SystemSocialNetwork)
 	SystemOnlineBoutique     = SystemType(systemconfig.SystemOnlineBoutique)
+	SystemSockShop           = SystemType(systemconfig.SystemSockShop)
+	SystemTeaStore           = SystemType(systemconfig.SystemTeaStore)
 )
 
 // String returns the string representation of SystemType

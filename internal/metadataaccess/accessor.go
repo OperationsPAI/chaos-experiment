@@ -138,6 +138,11 @@ func (m *MetadataAccessor) RegisterTrainTicketDatabaseOperations(accessor Databa
 	m.RegisterDatabaseOperations(systemconfig.SystemTrainTicket, accessor)
 }
 
+// RegisterTrainTicketGRPCOperations registers the TrainTicket gRPC operation accessor.
+func (m *MetadataAccessor) RegisterTrainTicketGRPCOperations(accessor GRPCOperationAccessor) {
+	m.RegisterGRPCOperations(systemconfig.SystemTrainTicket, accessor)
+}
+
 // RegisterTrainTicketJavaMethods registers the TrainTicket Java method accessor.
 func (m *MetadataAccessor) RegisterTrainTicketJavaMethods(accessor JavaMethodAccessor) {
 	m.RegisterJavaMethods(systemconfig.SystemTrainTicket, accessor)
@@ -156,6 +161,131 @@ func (m *MetadataAccessor) RegisterOtelDemoDatabaseOperations(accessor DatabaseO
 // RegisterOtelDemoGRPCOperations registers the OtelDemo gRPC operation accessor.
 func (m *MetadataAccessor) RegisterOtelDemoGRPCOperations(accessor GRPCOperationAccessor) {
 	m.RegisterGRPCOperations(systemconfig.SystemOtelDemo, accessor)
+}
+
+// RegisterOtelDemoJavaMethods registers the OtelDemo Java method accessor.
+func (m *MetadataAccessor) RegisterOtelDemoJavaMethods(accessor JavaMethodAccessor) {
+	m.RegisterJavaMethods(systemconfig.SystemOtelDemo, accessor)
+}
+
+// RegisterMediaMicroservicesServiceEndpoints registers the MediaMicroservices service endpoint accessor.
+func (m *MetadataAccessor) RegisterMediaMicroservicesServiceEndpoints(accessor ServiceEndpointAccessor) {
+	m.RegisterServiceEndpoints(systemconfig.SystemMediaMicroservices, accessor)
+}
+
+// RegisterMediaMicroservicesDatabaseOperations registers the MediaMicroservices database operation accessor.
+func (m *MetadataAccessor) RegisterMediaMicroservicesDatabaseOperations(accessor DatabaseOperationAccessor) {
+	m.RegisterDatabaseOperations(systemconfig.SystemMediaMicroservices, accessor)
+}
+
+// RegisterMediaMicroservicesGRPCOperations registers the MediaMicroservices gRPC operation accessor.
+func (m *MetadataAccessor) RegisterMediaMicroservicesGRPCOperations(accessor GRPCOperationAccessor) {
+	m.RegisterGRPCOperations(systemconfig.SystemMediaMicroservices, accessor)
+}
+
+// RegisterMediaMicroservicesJavaMethods registers the MediaMicroservices Java method accessor.
+func (m *MetadataAccessor) RegisterMediaMicroservicesJavaMethods(accessor JavaMethodAccessor) {
+	m.RegisterJavaMethods(systemconfig.SystemMediaMicroservices, accessor)
+}
+
+// RegisterHotelReservationServiceEndpoints registers the HotelReservation service endpoint accessor.
+func (m *MetadataAccessor) RegisterHotelReservationServiceEndpoints(accessor ServiceEndpointAccessor) {
+	m.RegisterServiceEndpoints(systemconfig.SystemHotelReservation, accessor)
+}
+
+// RegisterHotelReservationDatabaseOperations registers the HotelReservation database operation accessor.
+func (m *MetadataAccessor) RegisterHotelReservationDatabaseOperations(accessor DatabaseOperationAccessor) {
+	m.RegisterDatabaseOperations(systemconfig.SystemHotelReservation, accessor)
+}
+
+// RegisterHotelReservationGRPCOperations registers the HotelReservation gRPC operation accessor.
+func (m *MetadataAccessor) RegisterHotelReservationGRPCOperations(accessor GRPCOperationAccessor) {
+	m.RegisterGRPCOperations(systemconfig.SystemHotelReservation, accessor)
+}
+
+// RegisterHotelReservationJavaMethods registers the HotelReservation Java method accessor.
+func (m *MetadataAccessor) RegisterHotelReservationJavaMethods(accessor JavaMethodAccessor) {
+	m.RegisterJavaMethods(systemconfig.SystemHotelReservation, accessor)
+}
+
+// RegisterSocialNetworkServiceEndpoints registers the SocialNetwork service endpoint accessor.
+func (m *MetadataAccessor) RegisterSocialNetworkServiceEndpoints(accessor ServiceEndpointAccessor) {
+	m.RegisterServiceEndpoints(systemconfig.SystemSocialNetwork, accessor)
+}
+
+// RegisterSocialNetworkDatabaseOperations registers the SocialNetwork database operation accessor.
+func (m *MetadataAccessor) RegisterSocialNetworkDatabaseOperations(accessor DatabaseOperationAccessor) {
+	m.RegisterDatabaseOperations(systemconfig.SystemSocialNetwork, accessor)
+}
+
+// RegisterSocialNetworkGRPCOperations registers the SocialNetwork gRPC operation accessor.
+func (m *MetadataAccessor) RegisterSocialNetworkGRPCOperations(accessor GRPCOperationAccessor) {
+	m.RegisterGRPCOperations(systemconfig.SystemSocialNetwork, accessor)
+}
+
+// RegisterSocialNetworkJavaMethods registers the SocialNetwork Java method accessor.
+func (m *MetadataAccessor) RegisterSocialNetworkJavaMethods(accessor JavaMethodAccessor) {
+	m.RegisterJavaMethods(systemconfig.SystemSocialNetwork, accessor)
+}
+
+// RegisterOnlineBoutiqueServiceEndpoints registers the OnlineBoutique service endpoint accessor.
+func (m *MetadataAccessor) RegisterOnlineBoutiqueServiceEndpoints(accessor ServiceEndpointAccessor) {
+	m.RegisterServiceEndpoints(systemconfig.SystemOnlineBoutique, accessor)
+}
+
+// RegisterOnlineBoutiqueDatabaseOperations registers the OnlineBoutique database operation accessor.
+func (m *MetadataAccessor) RegisterOnlineBoutiqueDatabaseOperations(accessor DatabaseOperationAccessor) {
+	m.RegisterDatabaseOperations(systemconfig.SystemOnlineBoutique, accessor)
+}
+
+// RegisterOnlineBoutiqueGRPCOperations registers the OnlineBoutique gRPC operation accessor.
+func (m *MetadataAccessor) RegisterOnlineBoutiqueGRPCOperations(accessor GRPCOperationAccessor) {
+	m.RegisterGRPCOperations(systemconfig.SystemOnlineBoutique, accessor)
+}
+
+// RegisterOnlineBoutiqueJavaMethods registers the OnlineBoutique Java method accessor.
+func (m *MetadataAccessor) RegisterOnlineBoutiqueJavaMethods(accessor JavaMethodAccessor) {
+	m.RegisterJavaMethods(systemconfig.SystemOnlineBoutique, accessor)
+}
+
+// RegisterSockShopServiceEndpoints registers the SockShop service endpoint accessor.
+func (m *MetadataAccessor) RegisterSockShopServiceEndpoints(accessor ServiceEndpointAccessor) {
+	m.RegisterServiceEndpoints(systemconfig.SystemSockShop, accessor)
+}
+
+// RegisterSockShopDatabaseOperations registers the SockShop database operation accessor.
+func (m *MetadataAccessor) RegisterSockShopDatabaseOperations(accessor DatabaseOperationAccessor) {
+	m.RegisterDatabaseOperations(systemconfig.SystemSockShop, accessor)
+}
+
+// RegisterSockShopGRPCOperations registers the SockShop gRPC operation accessor.
+func (m *MetadataAccessor) RegisterSockShopGRPCOperations(accessor GRPCOperationAccessor) {
+	m.RegisterGRPCOperations(systemconfig.SystemSockShop, accessor)
+}
+
+// RegisterSockShopJavaMethods registers the SockShop Java method accessor.
+func (m *MetadataAccessor) RegisterSockShopJavaMethods(accessor JavaMethodAccessor) {
+	m.RegisterJavaMethods(systemconfig.SystemSockShop, accessor)
+}
+
+// RegisterTeaStoreServiceEndpoints registers the TeaStore service endpoint accessor.
+func (m *MetadataAccessor) RegisterTeaStoreServiceEndpoints(accessor ServiceEndpointAccessor) {
+	m.RegisterServiceEndpoints(systemconfig.SystemTeaStore, accessor)
+}
+
+// RegisterTeaStoreDatabaseOperations registers the TeaStore database operation accessor.
+func (m *MetadataAccessor) RegisterTeaStoreDatabaseOperations(accessor DatabaseOperationAccessor) {
+	m.RegisterDatabaseOperations(systemconfig.SystemTeaStore, accessor)
+}
+
+// RegisterTeaStoreGRPCOperations registers the TeaStore gRPC operation accessor.
+func (m *MetadataAccessor) RegisterTeaStoreGRPCOperations(accessor GRPCOperationAccessor) {
+	m.RegisterGRPCOperations(systemconfig.SystemTeaStore, accessor)
+}
+
+// RegisterTeaStoreJavaMethods registers the TeaStore Java method accessor.
+func (m *MetadataAccessor) RegisterTeaStoreJavaMethods(accessor JavaMethodAccessor) {
+	m.RegisterJavaMethods(systemconfig.SystemTeaStore, accessor)
 }
 
 // GetEndpointsByService returns endpoints for a service based on the current system.
