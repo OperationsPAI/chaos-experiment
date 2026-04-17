@@ -312,5 +312,5 @@ These are handler limitations rather than guided resolver gaps.
 ## Related Documents
 
 - `docs/chaos-exp-cli-examples.md`: example guided sessions using the new shorthand flow
-- `docs/chaos-exp-agent-quickstart.md`: concise operating guide for agents
+- `docs/chaos-exp-agent-skill/SKILL.md`: agent skill for driving the guided CLI
 - `docs/guided-live-validation-2026-04-17.md`: raw live validation notes
