@@ -27,6 +27,7 @@ func NewRootCmd(s Submitter) *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(&opts.namespace, "namespace", "ts", "Target namespace")
+	cmd.PersistentFlags().Bool("dry-run", false, "Print the generated spec instead of submitting it")
 
 	cmd.AddCommand(
 		NewNetworkCmd(s, opts),
