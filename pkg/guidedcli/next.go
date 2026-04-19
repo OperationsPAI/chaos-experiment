@@ -6,6 +6,13 @@ import (
 	"strings"
 )
 
+// ApplyNext is an alias for ApplyNextSelection kept for external callers
+// (e.g. aegisctl) that prefer the shorter name. Given the current guided
+// response and a raw --next value, it returns the updated GuidedConfig.
+func ApplyNext(response *GuidedResponse, rawValue string) (GuidedConfig, error) {
+	return ApplyNextSelection(response, rawValue)
+}
+
 func ApplyNextSelection(response *GuidedResponse, rawValue string) (GuidedConfig, error) {
 	if response == nil {
 		return GuidedConfig{}, fmt.Errorf("guided response is required")

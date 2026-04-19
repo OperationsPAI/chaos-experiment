@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
+
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 // NewRuntimeMutatorChaos creates a new runtime mutator chaos spec
@@ -120,7 +122,7 @@ func GenerateRuntimeMutatorChaosSpec(namespace string, appName string, duration 
 					GenericSelectorSpec: chaosmeshv1alpha1.GenericSelectorSpec{
 						Namespaces: []string{namespace},
 						LabelSelectors: map[string]string{
-							"app": appName,
+							systemconfig.GetCurrentAppLabelKey(): appName,
 						},
 					},
 				},

@@ -6,6 +6,8 @@ import (
 
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/rand"
+
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func NewJvmChaos(opts ...OptChaos) (*chaosmeshv1alpha1.JVMChaos, error) {
@@ -168,7 +170,7 @@ func GenerateJVMChaosSpec(namespace string, appName string, duration *string, op
 					GenericSelectorSpec: chaosmeshv1alpha1.GenericSelectorSpec{
 						Namespaces: []string{namespace},
 						LabelSelectors: map[string]string{
-							"app": appName,
+							systemconfig.GetCurrentAppLabelKey(): appName,
 						},
 					},
 				},

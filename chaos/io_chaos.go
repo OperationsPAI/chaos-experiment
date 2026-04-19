@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
+
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func NewIOChaos(opts ...OptChaos) (*chaosmeshv1alpha1.IOChaos, error) {
@@ -122,7 +124,7 @@ func GenerateIOChaosSpec(namespace string, appName string, duration *string, vol
 					GenericSelectorSpec: chaosmeshv1alpha1.GenericSelectorSpec{
 						Namespaces: []string{namespace},
 						LabelSelectors: map[string]string{
-							"app": appName,
+							systemconfig.GetCurrentAppLabelKey(): appName,
 						},
 					},
 				},

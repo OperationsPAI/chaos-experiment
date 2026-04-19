@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
+
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func NewStressChaos(opts ...OptChaos) (*chaosmeshv1alpha1.StressChaos, error) {
@@ -48,7 +50,7 @@ func GenerateStressChaosSpec(namespace string, appName string, duration *string,
 					GenericSelectorSpec: chaosmeshv1alpha1.GenericSelectorSpec{
 						Namespaces: []string{namespace},
 						LabelSelectors: map[string]string{
-							"app": appName,
+							systemconfig.GetCurrentAppLabelKey(): appName,
 						},
 					},
 				},
@@ -72,7 +74,7 @@ func GenerateStressChaosSpecWithContainers(namespace string, appName string, dur
 					GenericSelectorSpec: chaosmeshv1alpha1.GenericSelectorSpec{
 						Namespaces: []string{namespace},
 						LabelSelectors: map[string]string{
-							"app": appName,
+							systemconfig.GetCurrentAppLabelKey(): appName,
 						},
 					},
 				},

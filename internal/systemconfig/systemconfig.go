@@ -37,6 +37,9 @@ type SystemRegistration struct {
 	Name        SystemType
 	NsPattern   string
 	DisplayName string
+	// AppLabelKey is the pod label key used to select application workloads
+	// (e.g. "app", "app.kubernetes.io/name"). An empty value defaults to "app".
+	AppLabelKey string
 }
 
 var (
@@ -56,15 +59,30 @@ func init() {
 
 func builtinSystemRegistrations() []SystemRegistration {
 	return []SystemRegistration{
-		{Name: SystemTrainTicket, NsPattern: "^ts\\d+$", DisplayName: "TrainTicket"},
-		{Name: SystemOtelDemo, NsPattern: "^otel-demo\\d+$", DisplayName: "OtelDemo"},
-		{Name: SystemMediaMicroservices, NsPattern: "^media\\d+$", DisplayName: "MediaMicroservices"},
-		{Name: SystemHotelReservation, NsPattern: "^hs\\d+$", DisplayName: "HotelReservation"},
-		{Name: SystemSocialNetwork, NsPattern: "^sn\\d+$", DisplayName: "SocialNetwork"},
-		{Name: SystemOnlineBoutique, NsPattern: "^ob\\d+$", DisplayName: "OnlineBoutique"},
-		{Name: SystemSockShop, NsPattern: "^sockshop\\d+$", DisplayName: "SockShop"},
-		{Name: SystemTeaStore, NsPattern: "^teastore\\d+$", DisplayName: "TeaStore"},
+		{Name: SystemTrainTicket, NsPattern: "^ts\\d+$", DisplayName: "TrainTicket", AppLabelKey: "app"},
+		{Name: SystemOtelDemo, NsPattern: "^otel-demo\\d+$", DisplayName: "OtelDemo", AppLabelKey: "app.kubernetes.io/name"},
+		{Name: SystemMediaMicroservices, NsPattern: "^media\\d+$", DisplayName: "MediaMicroservices", AppLabelKey: "app"},
+		{Name: SystemHotelReservation, NsPattern: "^hs\\d+$", DisplayName: "HotelReservation", AppLabelKey: "app"},
+		{Name: SystemSocialNetwork, NsPattern: "^sn\\d+$", DisplayName: "SocialNetwork", AppLabelKey: "app"},
+		{Name: SystemOnlineBoutique, NsPattern: "^ob\\d+$", DisplayName: "OnlineBoutique", AppLabelKey: "app"},
+		{Name: SystemSockShop, NsPattern: "^sockshop\\d+$", DisplayName: "SockShop", AppLabelKey: "app"},
+		{Name: SystemTeaStore, NsPattern: "^teastore\\d+$", DisplayName: "TeaStore", AppLabelKey: "app"},
 	}
+}
+
+// GetAppLabelKey returns the pod selector label key for the given system.
+// Defaults to "app" if the system is unregistered or the registration has an empty AppLabelKey.
+func GetAppLabelKey(system SystemType) string {
+	reg := GetRegistration(system)
+	if reg == nil || reg.AppLabelKey == "" {
+		return "app"
+	}
+	return reg.AppLabelKey
+}
+
+// GetCurrentAppLabelKey returns the pod selector label key for the current system.
+func GetCurrentAppLabelKey() string {
+	return GetAppLabelKey(GetCurrentSystem())
 }
 
 // RegisterSystem registers a new system type.

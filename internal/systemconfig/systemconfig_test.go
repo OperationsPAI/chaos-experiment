@@ -351,6 +351,51 @@ func TestParseSystemType(t *testing.T) {
 	}
 }
 
+func TestGetAppLabelKey_DefaultsToApp(t *testing.T) {
+	// An unregistered system should fall back to "app".
+	got := GetAppLabelKey(SystemType("does-not-exist"))
+	if got != "app" {
+		t.Errorf("GetAppLabelKey(unregistered) = %q, want %q", got, "app")
+	}
+}
+
+func TestGetAppLabelKey_OtelDemoUsesKubernetesName(t *testing.T) {
+	got := GetAppLabelKey(SystemOtelDemo)
+	if got != "app.kubernetes.io/name" {
+		t.Errorf("GetAppLabelKey(SystemOtelDemo) = %q, want %q", got, "app.kubernetes.io/name")
+	}
+}
+
+func TestGetAppLabelKey_FallbackOnEmptyField(t *testing.T) {
+	const testSystem = SystemType("empty-label-key-system")
+
+	t.Cleanup(func() {
+		_ = SetCurrentSystem(SystemTrainTicket)
+		_ = UnregisterSystem(testSystem)
+	})
+
+	reg := SystemRegistration{
+		Name:        testSystem,
+		NsPattern:   "^empty-label-key-system\\d+$",
+		DisplayName: "EmptyLabelKeySystem",
+		// AppLabelKey intentionally left empty.
+	}
+	if err := RegisterSystem(reg); err != nil {
+		t.Fatalf("RegisterSystem() error = %v", err)
+	}
+
+	if got := GetAppLabelKey(testSystem); got != "app" {
+		t.Errorf("GetAppLabelKey(empty field) = %q, want %q", got, "app")
+	}
+
+	if err := SetCurrentSystem(testSystem); err != nil {
+		t.Fatalf("SetCurrentSystem() error = %v", err)
+	}
+	if got := GetCurrentAppLabelKey(); got != "app" {
+		t.Errorf("GetCurrentAppLabelKey() = %q, want %q", got, "app")
+	}
+}
+
 func TestRegisterSystemLifecycle(t *testing.T) {
 	const testSystem = SystemType("dynamic-test-system")
 

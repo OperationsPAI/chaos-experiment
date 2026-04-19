@@ -7,6 +7,8 @@ import (
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/utils/pointer"
+
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func NewHttpChaos(opts ...OptChaos) (*chaosmeshv1alpha1.HTTPChaos, error) {
@@ -205,7 +207,7 @@ func GenerateHttpChaosSpec(namespace string, appName string, duration *string, o
 			Selector: chaosmeshv1alpha1.PodSelectorSpec{
 				GenericSelectorSpec: chaosmeshv1alpha1.GenericSelectorSpec{
 					Namespaces:     []string{namespace},
-					LabelSelectors: map[string]string{"app": appName},
+					LabelSelectors: map[string]string{systemconfig.GetCurrentAppLabelKey(): appName},
 				},
 			},
 			Mode: chaosmeshv1alpha1.AllMode,

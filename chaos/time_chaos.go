@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
+
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func NewTimeChaos(opts ...OptChaos) (*chaosmeshv1alpha1.TimeChaos, error) {
@@ -48,7 +50,7 @@ func GenerateTimeChaosSpec(namespace string, appName string, duration *string, t
 					GenericSelectorSpec: chaosmeshv1alpha1.GenericSelectorSpec{
 						Namespaces: []string{namespace},
 						LabelSelectors: map[string]string{
-							"app": appName,
+							systemconfig.GetCurrentAppLabelKey(): appName,
 						},
 					},
 				},
@@ -74,7 +76,7 @@ func GenerateTimeChaosSpecWithContainers(namespace string, appName string, durat
 					GenericSelectorSpec: chaosmeshv1alpha1.GenericSelectorSpec{
 						Namespaces: []string{namespace},
 						LabelSelectors: map[string]string{
-							"app": appName,
+							systemconfig.GetCurrentAppLabelKey(): appName,
 						},
 					},
 				},

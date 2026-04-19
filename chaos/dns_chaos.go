@@ -4,6 +4,8 @@ import (
 	"errors"
 
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
+
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func NewDnsChaos(opts ...OptChaos) (*chaosmeshv1alpha1.DNSChaos, error) {
@@ -49,7 +51,7 @@ func GenerateDnsChaosSpec(namespace string, appName string, duration *string, ac
 					GenericSelectorSpec: chaosmeshv1alpha1.GenericSelectorSpec{
 						Namespaces: []string{namespace},
 						LabelSelectors: map[string]string{
-							"app": appName,
+							systemconfig.GetCurrentAppLabelKey(): appName,
 						},
 					},
 				},

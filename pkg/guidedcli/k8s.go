@@ -26,10 +26,11 @@ func safeAppLabels(namespace string, systemType systemconfig.SystemType) ([]stri
 		return nil, err
 	}
 
+	labelKey := systemconfig.GetAppLabelKey(systemType)
 	seen := map[string]bool{}
 	labels := make([]string, 0)
 	for _, pod := range pods {
-		if value := pod.Labels["app"]; value != "" && !seen[value] {
+		if value := pod.Labels[labelKey]; value != "" && !seen[value] {
 			seen[value] = true
 			labels = append(labels, value)
 		}
@@ -52,9 +53,10 @@ func safeContainers(namespace string) ([]resourcelookup.ContainerInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	labelKey := systemconfig.GetCurrentAppLabelKey()
 	result := make([]resourcelookup.ContainerInfo, 0)
 	for _, pod := range pods {
-		appLabel := pod.Labels["app"]
+		appLabel := pod.Labels[labelKey]
 		for _, container := range pod.Spec.Containers {
 			result = append(result, resourcelookup.ContainerInfo{
 				PodName:       pod.Name,

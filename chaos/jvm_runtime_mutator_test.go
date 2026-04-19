@@ -6,6 +6,8 @@ import (
 	chaosmeshv1alpha1 "github.com/chaos-mesh/chaos-mesh/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/utils/pointer"
+
+	"github.com/OperationsPAI/chaos-experiment/internal/systemconfig"
 )
 
 func TestNewRuntimeMutatorChaos(t *testing.T) {
@@ -166,6 +168,11 @@ func TestRuntimeMutatorOptions(t *testing.T) {
 }
 
 func TestGenerateRuntimeMutatorChaosSpec(t *testing.T) {
+	// Ensure the current system drives the expected "app" label key.
+	if err := systemconfig.SetCurrentSystem(systemconfig.SystemTrainTicket); err != nil {
+		t.Fatalf("SetCurrentSystem() error = %v", err)
+	}
+
 	tests := []struct {
 		name      string
 		namespace string

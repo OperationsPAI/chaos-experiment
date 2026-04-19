@@ -117,3 +117,9 @@ type GuidedSession struct {
 func intPtr(v int) *int {
 	return &v
 }
+
+// NewConfig returns a fresh GuidedConfig pre-populated with the given namespace.
+// Intended as a starter constructor for external callers (e.g. aegisctl).
+func NewConfig(namespace string) *GuidedConfig {
+	return &GuidedConfig{Namespace: namespace}
+}
