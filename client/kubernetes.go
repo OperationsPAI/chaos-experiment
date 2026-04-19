@@ -180,8 +180,13 @@ func GetLabels(ctx context.Context, namespace string, key string) ([]string, err
 }
 
 // GetContainersWithAppLabel retrieves all containers along with their pod names and app labels
-// in the specified namespace
-func GetContainersWithAppLabel(ctx context.Context, namespace string) ([]map[string]string, error) {
+// in the specified namespace. appLabelKey lets the caller pick the label that identifies
+// the app on each pod (e.g. "app" for TrainTicket, "app.kubernetes.io/name" for otel-demo);
+// empty string falls back to "app" to preserve legacy behavior.
+func GetContainersWithAppLabel(ctx context.Context, namespace, appLabelKey string) ([]map[string]string, error) {
+	if appLabelKey == "" {
+		appLabelKey = "app"
+	}
 	result := []map[string]string{}
 
 	// List all pods in the specified namespace
@@ -193,7 +198,7 @@ func GetContainersWithAppLabel(ctx context.Context, namespace string) ([]map[str
 	}
 
 	for _, pod := range podList.Items {
-		appLabel := pod.Labels["app"]
+		appLabel := pod.Labels[appLabelKey]
 
 		// Add each container with its pod name and app label
 		for _, container := range pod.Spec.Containers {

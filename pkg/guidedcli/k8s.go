@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 
 	"github.com/OperationsPAI/chaos-experiment/internal/resourcelookup"
 	"github.com/OperationsPAI/chaos-experiment/internal/serviceendpoints"
@@ -75,9 +76,12 @@ func safeContainers(namespace string) ([]resourcelookup.ContainerInfo, error) {
 }
 
 func listPodsSafe(namespace string) ([]corev1.Pod, error) {
-	config, err := buildKubeconfigSafe()
+	config, err := rest.InClusterConfig()
 	if err != nil {
-		return nil, err
+		config, err = buildKubeconfigSafe()
+		if err != nil {
+			return nil, err
+		}
 	}
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {

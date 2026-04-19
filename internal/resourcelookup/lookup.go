@@ -554,7 +554,7 @@ func (s *systemCache) GetAllContainers(ctx context.Context, namespace string) ([
 		}
 	}
 
-	containers, err := client.GetContainersWithAppLabel(ctx, namespace)
+	containers, err := client.GetContainersWithAppLabel(ctx, namespace, systemconfig.GetAppLabelKey(s.system))
 	if err != nil {
 		return nil, err
 	}

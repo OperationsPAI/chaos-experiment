@@ -50,7 +50,7 @@ func TestCRDClient1(t *testing.T) {
 }
 
 func TestGetContainersWithAppLabel(t *testing.T) {
-	containerInfos, err := GetContainersWithAppLabel(context.Background(), "ts0")
+	containerInfos, err := GetContainersWithAppLabel(context.Background(), "ts0", "app")
 	if err != nil {
 		t.Error(err)
 	}
